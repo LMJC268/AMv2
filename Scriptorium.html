@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+    <title>Scriptorium</title>
+    <style>
+		body { transition: opacity 0.3s ease-in-out; }
+		body.fonts-loading { opacity: 0; }
+		@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=UnifrakturMaguntia&display=swap');
+        :root {
+            /* Medieval / Parchment Palette */
+            --bg: #e6d8c3; 
+            --card: #f4ecdf; 
+            --primary: #800000; /* Crimson/Blood Red Ink */
+            --success: #2e5a27; /* Forest Green */
+            --danger: #8b0000; 
+            --warning: #b8860b; /* Goldenrod */
+            --text: #2c1e16; /* Deep brown/black ink */
+            --secondary: #5c4a3d;
+            --folder: #4a3320; 
+			--heatmap-0: #dccbb3; /* Blank: Aged Paper */
+			--heatmap-1: #b8860b; /* Low: Dark Goldenrod */
+			--heatmap-2: #daa520; /* Med: Goldenrod */
+			--heatmap-3: #ffd700; /* High: Gold */
+			--heatmap-4: #fdf5e6; /* Peak: Glowing White-Gold */
+            --parchment-border: #a8947a;
+        }
+		html { 
+            overflow: hidden; /* This removes the permanent gray track */
+        }
+        body { 
+            font-family: 'EB Garamond', serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #e6d8c3; 
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0) 100%),
+                linear-gradient(135deg, #e3d6b1 25%, transparent 25%), 
+                linear-gradient(225deg, #e3d6b1 25%, transparent 25%), 
+                linear-gradient(45deg, #e3d6b1 25%, transparent 25%), 
+                linear-gradient(315deg, #e3d6b1 25%, transparent 25%);
+            background-size: 100% 100%, 4px 4px, 4px 4px, 4px 4px, 4px 4px;
+            color: var(--text);
+            
+            /* Scrolling Logic */
+            height: 100vh;
+            overflow-y: auto;   /* Allows scrolling with wheel */
+            overflow-x: hidden; /* Stops side-to-side wiggle */
+
+            /* Hide Scrollbar for Firefox & Edge */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        /* Hide Scrollbar for Chrome & WebView2 */
+        body::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+		body::after {
+			content: "";
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			/* This gradient starts transparent and turns into a deep brown/burnt edge at the corners */
+			background: radial-gradient(circle, transparent 50%, rgba(44, 30, 22, 0.4) 100%);
+			pointer-events: none; /* Very important: allows you to click buttons through the vignette */
+			z-index: 50; /* Keeps the vignette on top of everything */
+		}
+        
+		h1 {
+			font-family: 'EB Garamond', serif;
+		}
+		
+        h2, h3, h4, .sys-modal-header, .crumb-link, .deck-title-text, .folder-icon, th {
+            font-family: 'Cinzel', serif;
+        }
+
+        .gothic-text { font-family: 'UnifrakturMaguntia', cursive; }
+        
+		/* --- Navigation --- */
+        nav { 
+            background: #24150f; 
+            background-image: linear-gradient(to bottom, #2b1a13, #1a0f0a);
+            color: #f2e3c6; 
+            padding: 1rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+            border-bottom: 3px solid var(--primary);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .nav-links { display: flex; gap: 10px; }
+        .nav-links button { 
+            background: transparent; 
+            border: 1px solid #5c4a3d; 
+            color: #f2e3c6; 
+            padding: 6px 15px; 
+            border-radius: 2px; 
+            cursor: pointer; 
+            font-family: 'UnifrakturMaguntia', cursive;
+            font-size: 1.15rem;
+            transition: all 0.2s;
+            box-shadow: none;
+            letter-spacing: 1px;
+        }
+        .nav-links button:hover { background: #3d261d; border-color: var(--primary); }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        .view { display: none; animation: fadeIn 0.3s ease; } .view.active { display: block; }
+		@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+		/* --- Cards --- */
+        .card { 
+            background: var(--card); 
+            padding: 20px; 
+            border-radius: 3px; 
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.15), inset 0 0 15px rgba(139, 69, 19, 0.04); 
+            border: 1px solid var(--parchment-border);
+            margin-bottom: 20px; 
+            position: relative; 
+        }
+        .edit-mode { border: 2px solid var(--primary); background: #fdf8f0; }
+        
+        .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; background: transparent; padding: 5px; border-radius: 2px; border: 1px solid transparent; }
+        label { font-weight: bold; padding-top: 5px; }
+        
+        .header-label, input[type="number"], input[type="text"], select { 
+            padding: 8px; 
+            border: 1px solid var(--parchment-border); 
+            border-radius: 2px; 
+            background: #fdfaf4;
+            color: var(--text);
+            font-family: 'EB Garamond', serif;
+            font-size: 1rem;
+        }
+        .header-label { width: 120px; font-weight: bold; background: #eadecd; }
+        .ans-val { flex-grow: 1; }
+        
+        button { 
+            padding: 8px 15px; 
+            cursor: pointer; 
+            border-radius: 2px; 
+            border: 1px solid #a39276; 
+            background: #e3d2ba; 
+            font-family: 'EB Garamond', serif;
+            font-weight: bold; 
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.1s ease;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+        }
+		
+		/* --- BUTTON HOVER REFINEMENT --- */
+
+		button:hover { background: #d4bf9f; }
+		button:active { transform: translateY(1px); box-shadow: 0 0 1px rgba(0,0,0,0.2); }
+
+		/* Primary / Red-toned buttons */
+		.btn-main { background: var(--primary); color: #f4ecdf; border: 1px solid #4a0000; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-main:hover { background: #5e0000; }
+
+		/* Folder / Woody-toned buttons */
+		.btn-folder { background: #4a3320; color: #f4ecdf; border: 1px solid #2c1e16; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-folder:hover { background: #322215 !important; }
+
+		/* Danger buttons (sharing main's hover logic usually works well) */
+		.btn-danger { background: var(--danger); color: #f4ecdf; border: 1px solid #4a0000; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-danger:hover { background: #5e0000; }
+
+		/* Parchment / White buttons (Dimming slightly to a darker tan) */
+		.btn-white { background: #f4ecdf; color: var(--text); border: 1px solid #d4c7b0; text-shadow: none; }
+		.btn-white:hover { background: #e6d8c1; }
+
+		/* Mute Brown / Secondary (The mid-tone brown) */
+		.btn-mutebrown { background: var(--secondary); color: #f4ecdf; border: 1px solid #6b4f3b; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-mutebrown:hover { background: #7a5e48; }
+
+		/* Dark Brown / Text (Going almost black-brown) */
+		.btn-darkbrown { background: var(--text); color: #f4ecdf; border: 1px solid #1a1512; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-darkbrown:hover { background: #1a1512; }
+
+		/* Success / Green buttons (A deeper, foresty green) */
+		.btn-green { background: var(--success); color: #f4ecdf; border: 1px solid #1e351e; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-green:hover { background: #254225; }
+
+		.btn-sm { padding: 2px 6px; font-size: 0.85rem; margin: 0 2px; }
+        
+        .deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .doom-meter { height: 6px; background: #dccbb3; border-radius: 1px; margin: 10px 0; overflow: hidden; border: 1px solid var(--parchment-border); }
+        .doom-fill { height: 100%; background: var(--warning); transition: width 0.3s; }
+
+        /* FOLDER STYLES */
+        .folder-card { 
+            background: #dbcca4; 
+            border: 2px solid #8b5a2b; /* Replaced dashed */
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+            min-height: 150px; 
+            position: relative; 
+            transition: all 0.2s; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.08);
+        }
+        .folder-card:hover { background: #cbb488; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(139, 69, 19, 0.15); border-color: var(--primary); }
+        .folder-icon { font-size: 3rem; margin-bottom: 10px; color: var(--folder); pointer-events: none; }
+        
+        .deck-header { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 10px; }
+        .deck-title-area { flex: 1; min-width: 0; overflow: hidden; }
+        .deck-title-text { margin: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1.3rem; }
+        .deck-title-text span { overflow: hidden; text-overflow: ellipsis; }
+        .deck-icons-area { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+
+		/* BREADCRUMBS */
+        .breadcrumb { margin-bottom: 15px; font-size: 1.2rem; color: var(--secondary); display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+        .crumb-link { cursor: pointer; text-decoration: none; color: var(--primary); padding: 2px 6px; border-radius: 2px; border: 1px solid transparent; transition: all 0.2s; }
+        /* .crumb-link:hover { background: #dcd0b8; border-color: #a39276; } */
+        .crumb-active { cursor: default; text-decoration: none; font-weight: bold; color: var(--text); padding: 2px 6px; }
+        .crumb-separator { cursor: default; text-decoration: none; color: #a39276; font-weight: normal; padding: 0 5px; user-select: none; }
+        
+		/* DRAG AND DROP VISUALS */
+        .drag-nest { background-color: #c0d1b4 !important; border-color: var(--success) !important; outline: 3px solid var(--success); } /* Replaced dashed */
+        .insert-before { border-left: 6px solid var(--primary) !important; padding-left: 14px !important; }
+        .insert-after { border-right: 6px solid var(--primary) !important; padding-right: 14px !important; }
+        .drag-sort-active { opacity: 0.5; border: 2px solid var(--primary); } /* Replaced dashed */
+        [draggable="true"] { cursor: grab; } [draggable="true"]:active { cursor: grabbing; }
+
+		/* --- Master Modal Fix: Tabula Style --- */
+		#modal-overlay, #stats-modal-overlay, #move-modal-overlay, #sys-modal-overlay, #delete-modal-overlay { 
+			position: fixed; 
+			inset: 0; 
+			background: rgba(20, 10, 5, 0.75); 
+			display: none; 
+			align-items: center;    
+			justify-content: center; 
+			z-index: 3000;
+		}
+
+		.modal { 
+            background: var(--card); 
+            padding: 25px; 
+            border-radius: 4px; 
+            border: 2px solid var(--primary);
+            width: 90%; 
+            max-width: 600px; 
+            max-height: 90vh; 
+            overflow-y: auto; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6), inset 0 0 30px rgba(139,69,19,0.08); 
+		}
+
+		/* Fix for the 'Messy' Delete/System Modal */
+		#sys-modal-overlay .modal {
+			max-width: 480px; /* Narrower for alerts */
+			text-align: left;
+		}
+
+		.sys-modal-actions {
+			display: flex;
+			justify-content: center; /* Center buttons */
+			gap: 12px;
+			margin-top: 25px;
+		}
+        
+        .sys-modal-header { font-size: 1.5rem; margin-bottom: 10px; color: var(--primary); border-bottom: 1px solid var(--parchment-border); padding-bottom: 5px; }
+        .sys-modal-body { margin-bottom: 20px; font-size: 1.1rem; color: var(--text); }
+        .sys-modal-input { padding: 10px; margin-bottom: 20px; border: 1px solid #a39276; border-radius: 2px; font-size: 1rem; display: flex; justify-content: flex-end; box-sizing: border-box; }
+        .sys-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--card); border: 1px solid var(--parchment-border); }
+        th, td { border: 1px solid var(--parchment-border); padding: 10px; text-align: left; font-size: 0.95em; }
+        th { background: #eadecd; font-family: 'Cinzel', serif; font-weight: 600; }
+        
+        .stats-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #eadecd; padding: 15px; border-radius: 3px; text-align: center; border: 1px solid var(--parchment-border); box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
+        .stat-val { font-size: 1.6rem; font-weight: bold; color: var(--primary); font-family: 'Cinzel', serif; }
+        
+        .lvl-bar-container { display: flex; align-items: flex-end; gap: 10px; height: 100px; padding: 20px; background: #eadecd; border-radius: 8px; border: 1px solid var(--parchment-border); }
+        .lvl-bar { flex: 1; background: var(--primary); border-radius: 1px 1px 0 0; min-height: 2px; position: relative; }
+        .lvl-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; color: var(--secondary); font-weight: bold; }
+
+        .heatmap { display: grid; grid-template-columns: repeat(52, 1fr); grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; padding: 15px; background: var(--card); border-radius: 3px; border: 1px solid var(--parchment-border); overflow-x: auto; }
+        .heat-cell { width: 12px; height: 12px; border-radius: 1px; background: var(--heatmap-0); cursor: pointer; border: 1px solid rgba(0,0,0,0.05); }
+        
+        #custom-tooltip {
+            position: fixed; background: #24150f; color: #f2e3c6; padding: 6px 12px; border-radius: 2px; font-size: 0.9rem;
+            pointer-events: none; z-index: 9999; display: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid var(--primary); font-family: 'EB Garamond', serif;
+        }
+
+		.toast {
+			/* Kill all inherited styles from body/divs */
+			all: unset; 
+			
+			/* Position */
+			position: fixed;
+			left: 50%;
+			bottom: 30px;
+			transform: translateX(-50%) translateY(20px);
+			
+			/* Visuals */
+			background: #2b1b12 !important; /* Dark ink brown */
+			color: #f4ecdf !important;     /* Parchment cream */
+			padding: 12px 28px !important;
+			border: 1px solid #800000 !important; /* Crimson border */
+			border-radius: 4px !important;
+			box-shadow: 0 8px 20px rgba(0,0,0,0.6) !important;
+			
+			/* Typography */
+			font-family: 'EB Garamond', serif !important;
+			font-size: 1.1rem !important;
+			text-align: center !important;
+			white-space: nowrap !important;
+			text-transform: uppercase !important;
+			
+			/* Animation Logic */
+			z-index: 20000 !important;
+			opacity: 0;
+			pointer-events: none;
+			transition: transform 0.3s ease, opacity 0.3s ease;
+			display: block !important;
+		}
+
+		.toast.show {
+			opacity: 1;
+			visibility: visible; /* ADD THIS: Makes it reappear */
+			transform: translate(-50%, -30px); 
+		}
+        @keyframes fadeOut { from {opacity:1; transform: translate(-50%, 0);} to {opacity:0; transform: translate(-50%, 20px);} }
+
+		/* Ported from Tabula: Settings UI */
+        /* --- Settings Styles --- */
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--parchment-border); gap: 30px; } 
+        .settings-row label { flex: 1; font-weight: bold; font-size: 1.1rem; }
+        .settings-subtext { font-size: 0.9rem; color: var(--secondary); font-weight: normal; display: block; margin-top: 4px; font-style: italic; }
+        #sync-indicator { font-size: 0.9rem; color: #c5ad8d; margin-left: 20px; font-family: 'EB Garamond', serif; }
+
+        .deck-checkbox { cursor: pointer; z-index: 10; width:18px; height:18px; margin:0; flex-shrink: 0; accent-color: var(--primary); }
+        #bulk-actions { 
+            background: var(--warning); 
+            padding: 10px 20px; 
+            border-radius: 2px; 
+            display: none; 
+            align-items: center; 
+            justify-content: space-between; 
+            margin-bottom: 15px; 
+            color: #2c1e16; 
+            font-weight: bold;
+            border: 1px solid #8f6805;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+        .study-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; font-size: 0.9rem; color: var(--secondary); margin-bottom: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+	<body class="fonts-loading">
+    <nav>
+        <div style="display:flex; align-items:center;">
+            <h2 class="gothic-text" onclick="app.currentFolder=''; showView('library-view')" style="cursor:pointer; margin:0; font-size: 2rem; letter-spacing: 2px;">Scriptorium</h2>
+            <span id="sync-indicator">Web Mode</span>
+        </div>
+        <div class="nav-links">
+            <button onclick="showView('library-view')">📜 Archivum</button>
+            <button onclick="createNewDeck()">📙 Capsa Novae</button>
+            <button onclick="switchApp('Tabula Scripta.html')">🪨 Tabula Scripta</button>
+            <button onclick="showStatsView()">🏛️ Annales</button>
+            <button onclick="showSettings()">⚒️ Praecepta</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="library-view" class="view active">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
+                    <div id="breadcrumbs" class="breadcrumb"><span>Archivum</span></div>
+                    <div style="display:flex; gap:10px; flex-wrap: wrap; width: 100%; justify-content: space-between; align-items: center;">
+                        <input type="text" id="library-search" placeholder="🔍 Search archives..." style="flex:1; min-width: 250px; max-width: 400px; padding: 10px;" oninput="renderLibrary()">
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-folder" onclick="createNewFolder()">New Folder</button>
+                            <button class="btn-main" onclick="document.getElementById('fileLoad').click()">Import Capsa</button>
+                            <button onclick="exportAllData()" style="color:var(--text); border-color:var(--secondary);">Export Codex</button>
+							<button onclick="document.getElementById('mass-import-input').click()" style="color:var(--success); border-color:var(--success);">Import Codex</button>
+                        </div>
+                    </div>
+                    <input type="file" id="fileLoad" accept=".csv" style="display:none">
+					<input type="file" id="mass-import-input" style="display:none;" onchange="handleMassFile(this)">
+                </div>
+                <hr style="border:0; border-top:2px solid var(--parchment-border); margin:15px 0;">
+				<div id="bulk-actions">
+					<span><span id="bulk-count">0</span> items selected</span>
+					<div style="display:flex; gap:10px; ">
+						<button class="btn-white" onclick="openBulkMoveModal()">📂 Move</button>
+						<button class="btn-danger" style="margin-left: 10px;" onclick="bulkDelete()">✕ Delete</button>
+					</div>
+				</div>
+                <div id="deck-grid" class="deck-grid"></div>
+            </div>
+			
+        </div>
+
+        <div id="stats-view" class="view">
+            <div class="card">
+                <h2>Annales: Global Progress</h2>
+                <div id="global-stats-content"></div>
+                <h3 style="margin-top: 30px;">Activity Map (Last 365 Days)</h3>
+                <div id="heatmap-container" class="heatmap"></div>
+            </div>
+        </div>
+
+        <div id="editor-view" class="view">
+            <div class="card" id="input-card">
+                <h2 id="entry-title">Editing: <span id="current-deck-name">---</span></h2>
+                <input type="hidden" id="card-id-hidden" value="">
+                
+                <h4 style="margin-bottom:10px; color:var(--secondary);">Entry Details</h4>
+                <div id="answer-inputs"></div>
+                <button onclick="createNewRowManually()">+ Add Field / Column</button>
+                <div class="controls" style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn-main" onclick="addEntry()">Add / Update Entry</button>
+                    <button class="btn-main" style="background:var(--secondary); display:none;" onclick="cancelEdit()" id="cancel-btn">Cancel</button>
+                    <button class="btn-green" onclick="saveToLibrary()">Save <span id="unsaved-count" style="display:none !important; background:var(--warning); color:#2c1e16; padding:2px 8px; border-radius:12px; font-size:0.75rem; border:1px solid #8f6805;">0</span></button>
+                    <button class="btn-folder" style="background:var(--folder);" onclick="saveAsCopy()">Save Copy...</button>
+                    <button class="btn-mutebrown" onclick="exportFromEditor()">Export</button>
+                    <button class="btn-darkbrown" onclick="renameDeck(app.activeDeck)">Rename Deck</button>
+                </div>
+            </div>
+            <div class="card">
+                <input type="text" id="search-bar" placeholder="🔍 Search current deck..." oninput="updatePreview()" style="width:100%; margin-bottom:10px; box-sizing:border-box;">
+                <div id="table-container" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+
+        <div id="study-view" class="view">
+            <div id="study-box" class="card" style="max-width:500px; margin:0 auto; text-align:center;">
+                <div class="study-header">
+                    <span id="card-index" style="text-align:left;">0/0</span>
+                    <span id="study-streak-container" style="color:#d35400; font-weight:bold;">🔥 <span id="study-streak">0</span> Days</span>
+                    <span id="card-lvl" style="text-align:right;">Lvl 0</span>
+                </div>
+                <h1 id="study-q" style="margin:20px 0; font-size:2rem; position:relative;">
+                    <span id="study-q-text">---</span> 
+                </h1>
+                <div id="study-answers"></div>
+                <button id="check-btn" class="btn-main" style="width:100%; padding:15px; margin-top:20px; font-size:1.2rem;" onclick="handleStudyAction()">Check Answer</button>
+            </div>
+        </div>
+
+        <div id="settings-view" class="view">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <h2 style="margin-top:0; color: var(--primary);">Praecepta (Settings)</h2>
+                <div class="settings-row"><label>Play Sounds (SFX)<span class="settings-subtext">Play a victory chime upon completing a card.</span></label><input type="checkbox" id="set-sound" style="width:20px; height:20px; accent-color: var(--primary);"></div>
+                <div class="settings-row"><label>Auto-Shuffle Cards<span class="settings-subtext">Randomize the order of cards in decks.</span></label><input type="checkbox" id="set-shuffle" style="width:20px; height:20px; accent-color: var(--primary);"></div>
+                <div class="settings-row"><label>Max Cards per Session (0 = Unlimited)<span class="settings-subtext">Limit the number of cards per study session.</span></label><input type="number" id="set-maxcards">
+                </div>
+                <div class="settings-row" /*style="flex-direction: column; align-items: flex-start;"*/>
+                    <label>Intervals (hours)<span class="settings-subtext">Customize length and number of SRS intervals.</span></label>
+                    <input type="text" id="set-intervals" /*style="width:100%; box-sizing:border-box;"*/>
+                </div>
+                <hr style="border:0; border-top:2px solid var(--parchment); margin:15px 0;">
+                <h3 style="margin:0 0 0 0;">Typo & Forgiveness System</h3>
+                <div class="settings-row"><label>Ignore Letter Casing</label><input type="checkbox" id="set-ignoreCase" style="width:20px; height:20px; accent-color: var(--primary);"></div>
+                <div class="settings-row"><label>Ignore Punctuation</label><input type="checkbox" id="set-ignorePunct" style="width:20px; height:20px; accent-color: var(--primary);"></div>
+                <div class="settings-row">
+                    <label>Max Allowed Typos (Levenshtein Distance, 0 = Strict)</label>
+                    <input type="number" id="set-typoTol" min="0" style="width:80px;">
+                </div>
+
+                <button class="btn-main" style="width:100%; margin-top:20px;" onclick="saveSettings()">Save Configuration</button>
+				
+				<hr style="border:0; border-top:2px solid var(--parchment-border); margin:25px 0;">
+				<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+					<h4 style="color: var(--danger); margin: 0; white-space: nowrap; font-family: 'Cinzel', serif;">
+						The Forbidden Arts
+					</h4>
+					<button class="btn-danger" 
+							style="margin: 0; width: auto; max-width: 200px; padding: 8px 20px; white-space: nowrap;" 
+							onclick="deleteAllData()">
+						✕ Burn All Records
+					</button>
+				</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="move-modal-overlay">
+        <div class="modal">
+            <h3 id="move-modal-title" style="font-family:'Cinzel', serif; font-size:1.17rem; margin: 0 0 10px 0;">Move Deck</h3>
+            <p style="font-size:1rem; color:var(--secondary); margin: 0 0 10px 0;">Select destination folder:</p>
+            <select id="move-folder-select" style="width:100%; padding:10px; margin-bottom:20px; font-size: 1.1rem; box-sizing: border-box;"></select>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-main" style="flex:1;" onclick="confirmMove()">Move</button>
+                <button style="flex:1;" onclick="document.getElementById('move-modal-overlay').style.display='none'">Cancel</button>
+            </div>
+        </div>
+    </div>
+	
+	<div id="delete-modal-overlay" style="position: fixed; inset: 0; background: rgba(20, 10, 5, 0.75); display: none; align-items: center; justify-content: center; z-index: 2000;">
+		<div class="modal" style="max-width: 600px; width: 95%; background: var(--card); padding: 25px; border-radius: 4px; border: 2px solid var(--primary); box-shadow: 0 10px 25px rgba(0,0,0,0.6), inset 0 0 30px rgba(139,69,19,0.08); position: relative; margin: auto;">
+			
+			<h3 id="delete-modal-title" style="font-family:'Cinzel', serif; font-size:1.17rem; color:#000; margin: 0 0 10px 0;">Delete Records</h3>
+			<p id="delete-modal-msg" style="font-size:1rem; color:var(--secondary); margin: 0 0 20px 0;">Are you certain?</p>
+			
+			<div style="display:flex; gap:10px;">
+				<button class="btn-danger" style="flex:1;" onclick="confirmBulkDelete()">Delete</button>
+				<button style="flex:1; background:#eadecd; color:var(--text); border-color:#a39276;" onclick="document.getElementById('delete-modal-overlay').style.display='none'">Cancel</button>
+			</div>
+
+		</div>
+	</div>
+
+    <div id="modal-overlay">
+        <div class="modal">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0">Set Up Session</h3>
+            </div>
+            <div id="lang-selection-list" style="margin:20px 0"></div>
+            <button class="btn-main" style="width:100%" onclick="beginSession()">Start Session</button>
+            <button onclick="document.getElementById('modal-overlay').style.display='none'" style="width:100%; margin-top:10px;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="stats-modal-overlay">
+        <div class="modal">
+            <h3 id="deck-stat-title">Deck Stats</h3>
+            <div id="deck-stat-body"></div>
+            <button class="btn-main" style="width:100%; margin-top:20px;" onclick="document.getElementById('stats-modal-overlay').style.display='none'">Close</button>
+        </div>
+    </div>
+
+
+    <audio id="snd-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
+    <audio id="snd-wrong" src="https://assets.mixkit.co/active_storage/sfx/133/133-preview.mp3" preload="auto"></audio>
+    
+    <div id="custom-tooltip"></div>
+
+
+    <script>
+	
+	// Hide content until fonts are ready to prevent the layout "jerk"
+	document.fonts.ready.then(() => {
+		document.body.classList.remove('fonts-loading');
+	});
+	
+	window.addEventListener('pywebviewready', () => {
+		// We wait 100ms to ensure the Python API is fully 'awake'
+		setTimeout(() => {
+			loadFromDisk().then(() => {
+				// Force the section to show only AFTER loading is done
+				if (typeof showSection === 'function') {
+					showSection('library');
+				}
+			});
+		}, 100); 
+	});
+	
+    // System core script (Unchanged functionality)
+    const defaultSettings = { sound: true, shuffle: true, maxCards: 50, intervals: [0, 4, 12, 24, 72, 168, 720], ignoreCase: true, ignorePunct: false, typoTolerance: 1 };
+    let savedSettings = {};
+    try { savedSettings = JSON.parse(localStorage.getItem('srs_settings')) || {}; } catch(e) {}
+
+    let app = {
+        lib: JSON.parse(localStorage.getItem('srs_lib') || "{}"),
+        folders: JSON.parse(localStorage.getItem('srs_folders') || "{}"), 
+        explicitFolders: JSON.parse(localStorage.getItem('srs_explicit_folders') || "[]"),
+        sortOrder: JSON.parse(localStorage.getItem('srs_sort_order') || "[]"), 
+        settings: { ...defaultSettings, ...savedSettings },
+        activeDeck: "", sessionData: [], unsavedChanges: 0, streak: 0, 
+        studyQueue: [], studyIdx: 0, studyChecked: false, studyLangs: [], primaryField: "",
+        currentFolder: "", deckToMove: null, cramMode: false
+    };
+
+    function generateId() { return Math.random().toString(36).substr(2, 9); }
+    
+	const SysModal = {
+		show: function(type, message, defaultValue = '', title = "Ars Memoria") {
+			return new Promise((resolve) => {
+				const overlay = document.getElementById('sys-modal-overlay');
+				const msgEl = document.getElementById('sys-modal-msg');
+				const titleEl = document.getElementById('sys-modal-title');
+				const inputEl = document.getElementById('sys-modal-input');
+				const btnOk = document.getElementById('sys-btn-ok');
+				const btnCancel = document.getElementById('sys-btn-cancel');
+
+				titleEl.innerText = title;
+				msgEl.innerText = message;
+				overlay.style.display = 'flex';
+
+				if (type === 'prompt') {
+					inputEl.style.display = 'block';
+					inputEl.value = defaultValue;
+					setTimeout(() => inputEl.focus(), 50);
+				} else {
+					inputEl.style.display = 'none';
+				}
+
+				// Fix visibility and labels
+				if (type === 'alert') {
+					btnCancel.style.display = 'none';
+					btnOk.innerText = "Understood";
+				} else {
+					btnCancel.style.display = 'inline-block';
+					btnOk.innerText = "Confirm";
+				}
+
+				btnOk.onclick = () => {
+					const val = (type === 'prompt') ? inputEl.value : true;
+					this.close();
+					resolve(val);
+				};
+
+				btnCancel.onclick = () => {
+					this.close();
+					resolve(false);
+				};
+			});
+		},
+		close: function() {
+			document.getElementById('sys-modal-overlay').style.display = 'none';
+		},
+		alert: function(msg) { return this.show('alert', msg); },
+		confirm: function(msg) { return this.show('confirm', msg, '', "Are you certain?"); },
+		prompt: function(msg, def) { return this.show('prompt', msg, def, "Input Required"); }
+	};
+
+	function showToast(msg) {
+		const t = document.getElementById('toast-msg');
+		t.innerText = msg;
+		t.classList.remove('show');
+		// Trigger reflow for animation
+		void t.offsetWidth; 
+		t.classList.add('show');
+		setTimeout(() => t.classList.remove('show'), 2500);
+	}
+
+    function dragStart(e, id) { 
+        e.dataTransfer.setData('text/plain', id); 
+        e.dataTransfer.effectAllowed = 'move';
+        e.target.classList.add('drag-sort-active');
+    }
+    
+    function dragEnd(e) {
+        e.target.classList.remove('drag-sort-active');
+        document.querySelectorAll('.drag-nest').forEach(el => el.classList.remove('drag-nest'));
+        document.querySelectorAll('.insert-before').forEach(el => el.classList.remove('insert-before'));
+        document.querySelectorAll('.insert-after').forEach(el => el.classList.remove('insert-after'));
+    }
+
+    function handleDragOver(e, targetId, isFolder) {
+        e.preventDefault(); 
+        const rect = e.currentTarget.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const width = rect.width;
+        
+        e.currentTarget.classList.remove('drag-nest', 'insert-before', 'insert-after');
+
+        if (isFolder && offsetX > width * 0.25 && offsetX < width * 0.75) {
+            e.currentTarget.classList.add('drag-nest');
+            e.dataTransfer.dropEffect = 'move'; 
+        } else if (offsetX < width / 2) {
+            e.currentTarget.classList.add('insert-before');
+            e.dataTransfer.dropEffect = 'move'; 
+        } else {
+            e.currentTarget.classList.add('insert-after');
+            e.dataTransfer.dropEffect = 'move'; 
+        }
+    }
+    
+    function handleBreadcrumbDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-nest'); 
+    }
+
+    function handleBreadcrumbLeave(e) {
+        e.currentTarget.classList.remove('drag-nest');
+    }
+
+    async function handleBreadcrumbDrop(e, targetPath) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.currentTarget.classList.remove('drag-nest');
+        const sourceId = e.dataTransfer.getData('text/plain');
+        if (!sourceId) return;
+
+        if (sourceId.endsWith('.csv') || app.lib[sourceId]) {
+            if (targetPath === "") delete app.folders[sourceId];
+            else app.folders[sourceId] = targetPath;
+            saveFolders();
+            renderLibrary();
+        } else {
+            await moveFolderTo(sourceId, targetPath);
+        }
+    }
+
+    function handleDrop(e, targetId) {
+        e.preventDefault(); 
+        e.stopPropagation();
+        
+        const sourceId = e.dataTransfer.getData('text/plain');
+        if (!sourceId || sourceId === targetId) return;
+
+        const el = e.currentTarget;
+        const isNest = el.classList.contains('drag-nest');
+        const isBefore = el.classList.contains('insert-before');
+        const isAfter = el.classList.contains('insert-after');
+
+        el.classList.remove('drag-nest', 'insert-before', 'insert-after');
+
+        if (isNest) {
+            if (sourceId.endsWith('.csv') || app.lib[sourceId]) {
+                 if (targetId === "") delete app.folders[sourceId]; 
+                 else app.folders[sourceId] = targetId;
+                 saveFolders();
+                 renderLibrary();
+            } else {
+                 moveFolderTo(sourceId, targetId);
+            }
+            return;
+        }
+
+        let newOrder = [...app.sortOrder];
+        const srcIdx = newOrder.indexOf(sourceId);
+        if (srcIdx > -1) newOrder.splice(srcIdx, 1);
+        
+        let tgtIdx = newOrder.indexOf(targetId);
+        
+        if (tgtIdx === -1) {
+            newOrder.push(sourceId);
+        } else {
+            if (isAfter) tgtIdx++;
+            newOrder.splice(tgtIdx, 0, sourceId);
+        }
+        
+        app.sortOrder = newOrder;
+        localStorage.setItem('srs_sort_order', JSON.stringify(app.sortOrder));
+        renderLibrary();
+    }
+    
+    async function moveFolderTo(srcPath, destPath) {
+        const folderName = srcPath.split('/').pop();
+        if(destPath === srcPath || destPath.startsWith(srcPath + "/")) return; 
+        
+        let newPath = destPath ? destPath + "/" + folderName : folderName;
+        
+        Object.keys(app.folders).forEach(deck => {
+            if (app.folders[deck] === srcPath) app.folders[deck] = newPath;
+            else if (app.folders[deck].startsWith(srcPath + "/")) { 
+                app.folders[deck] = newPath + app.folders[deck].substring(srcPath.length); 
+            }
+        });
+        
+        app.explicitFolders = app.explicitFolders.map(f => {
+            if (f === srcPath) return newPath;
+            if (f.startsWith(srcPath + "/")) return newPath + f.substring(srcPath.length);
+            return f;
+        });
+        saveFolders();
+        renderLibrary();
+    }
+
+	function toggleBulk() {
+		const checked = document.querySelectorAll('.deck-checkbox:checked');
+		const bar = document.getElementById('bulk-actions');
+		if (checked.length > 0) {
+			bar.style.display = 'flex';
+			// Smart pluralization
+			const countText = checked.length === 1 ? "1 deck selected" : `${checked.length} decks selected`;
+			document.getElementById('bulk-actions').querySelector('span').innerHTML = `<span>${countText}</span>`;
+		} else {
+			bar.style.display = 'none';
+		}
+	}
+
+	function bulkDelete() {
+		const checked = document.querySelectorAll('.deck-checkbox:checked');
+		const count = checked.length;
+		if (count === 0) return;
+
+		// Smart Pluralization
+		const label = count === 1 ? "deck" : "decks";
+		document.getElementById('delete-modal-title').innerText = count === 1 ? "Delete Selected Deck" : "Delete Selected Decks";
+		document.getElementById('delete-modal-msg').innerText = `Are you certain you wish to burn ${count} ${label}? Burnt decks shall be lost to the void forever.`;
+		
+		// Show our new, twin modal
+		document.getElementById('delete-modal-overlay').style.display = 'flex';
+	}
+
+	function confirmBulkDelete() {
+		const checked = document.querySelectorAll('.deck-checkbox:checked');
+		let count = 0;
+		
+		checked.forEach(cb => {
+			const n = cb.value;
+			delete app.lib[n];
+			delete app.folders[n];
+			localStorage.removeItem(`prog_${n}`);
+			count++;
+		});
+		
+		saveFolders();
+		localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+		renderLibrary();
+		toggleBulk();
+		
+		// Hide the modal and show the toast
+		document.getElementById('delete-modal-overlay').style.display = 'none';
+		showToast(`Decks Burnt!`);
+	}
+
+    function openBulkMoveModal() { openMoveDeckModal(null); }
+
+	async function syncToDisk() {
+        if (window.pywebview) {
+            document.getElementById('sync-indicator').innerText = "💾 Saving...";
+            // Just call the master handshake instead of duplicating code
+            if (window.triggerAutoBackups) window.triggerAutoBackups();
+            
+            setTimeout(() => { 
+                document.getElementById('sync-indicator').innerText = "✅ Saved Locally"; 
+            }, 300);
+        }
+    }
+
+	async function loadFromDisk() {
+		if (window.pywebview && window.pywebview.api) {
+			const indicator = document.getElementById('sync-indicator');
+			indicator.innerText = "🔄 Reading...";
+			try {
+				const dataRaw = await pywebview.api.load_from_disk();
+				
+				if (!dataRaw || dataRaw === "{}") {
+					indicator.innerText = "✨ New Library";
+					setTimeout(() => { renderLibrary(); if(typeof showView === 'function') showView('library-view'); }, 50);
+					return;
+				}
+
+				const data = JSON.parse(dataRaw);
+				
+				// 1. MAP DATA: Pull from JSON into the active app object
+				app.lib = data.lib || data.srs_lib || {};
+				app.settings = { ...defaultSettings, ...(data.settings || data.srs_settings || {}) };
+				app.folders = data.folders || data.srs_folders || {};
+				app.explicitFolders = data.explicitFolders || data.srs_explicit_folders || [];
+				app.sortOrder = data.sortOrder || data.srs_sort_order || [];
+				app.streak = data.streak || 0; // The Streak Fix
+
+				// 2. SYNC STORAGE: Update the browser's memory
+				localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+				localStorage.setItem('srs_settings', JSON.stringify(app.settings));
+				localStorage.setItem('srs_folders', JSON.stringify(app.folders));
+				localStorage.setItem('srs_explicit_folders', JSON.stringify(app.explicitFolders));
+				localStorage.setItem('srs_sort_order', JSON.stringify(app.sortOrder));
+				localStorage.setItem('srs_streak', app.streak.toString());
+
+				if (data.progress) {
+					Object.keys(data.progress).forEach(deck => {
+						localStorage.setItem(`prog_${deck}`, JSON.stringify(data.progress[deck]));
+					});
+				}
+
+				indicator.innerText = "✅ Desktop Active";
+				
+				// 3. UI REFRESH: Force the screen to show the numbers we just loaded
+				setTimeout(() => { 
+					// Redraw the whole library
+					renderLibrary(); 
+					
+					// Manually poke the streak counter if it exists
+					const streakEl = document.getElementById('streak-count');
+					if (streakEl) streakEl.innerText = app.streak;
+
+					// Switch to the correct view
+					if(typeof showView === 'function') showView('library-view'); 
+					
+					console.log("UI synced with Scriptorium Disk Data.");
+				}, 50);
+
+			} catch(e) {
+				console.error("Load Failed:", e);
+				indicator.innerText = "❌ Load Error";
+				setTimeout(() => { renderLibrary(); }, 50);
+			}
+		} else {
+			setTimeout(() => { renderLibrary(); }, 50);
+		}
+	}
+
+	// 1. The Primary Trigger: Fires as soon as the Python bridge is stable
+	window.addEventListener('pywebviewready', () => {
+		console.log("Bridge Ready. Starting Load...");
+		loadFromDisk();
+	});
+
+	// 2. The Safety Net: If we're in a browser or the bridge is slow, 
+	// initialize normally after 2 seconds so the screen isn't frozen.
+	setTimeout(() => {
+		const indicator = document.getElementById('sync-indicator');
+		if (indicator && indicator.innerText === "🔄 Reading...") {
+			console.warn("Bridge timed out. Falling back to local render.");
+			renderLibrary(); 
+		}
+	}, 2000);
+	
+    function getLevenshtein(a, b) {
+        if(a.length === 0) return b.length;
+        if(b.length === 0) return a.length;
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i-1) === a.charAt(j-1)) matrix[i][j] = matrix[i-1][j-1];
+                else matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1));
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+    function normalizeString(str) {
+        let s = str.trim();
+        if(app.settings.ignoreCase) s = s.toLowerCase();
+        if(app.settings.ignorePunct) s = s.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+        return s;
+    }
+
+    function sanitizeToCSV(headers, dataRows) {
+        const wrap = (val) => `"${(val || "").toString().replace(/"/g, '""')}"`;
+        const headerLine = headers.map(h => wrap(h)).join(",");
+        const contentLines = dataRows.map(row => headers.map(h => wrap(row[h])).join(",")).join("\n");
+        return headerLine + "\n" + contentLines;
+    }
+
+    function parseCSV(csvText) {
+        const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== "");
+        if (lines.length === 0) return { headers: [], data: [] };
+        const delim = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
+        let headers = lines[0].split(delim).map(h => h.replace(/^"|"$/g, '').trim());
+        const data = [];
+        for(let i=1; i<lines.length; i++) {
+            const regex = new RegExp(`${delim}(?=(?:[^"]*"[^"]*")*[^"]*$)`);
+            let vals = lines[i].split(regex).map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+            let obj = {};
+            headers.forEach((h, idx) => { obj[h] = vals[idx] || ""; });
+            if (!obj._id) obj._id = generateId();
+            if (Object.values(obj).some(v => v !== "" && v !== obj._id)) data.push(obj);
+        }
+        if(!headers.includes('_id')) headers.push('_id');
+        return { headers, data };
+    }
+
+    function showView(id) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'library-view') renderLibrary();
+        if(id === 'stats-view') renderHeatmap();
+    }
+
+    function saveFolders() {
+        localStorage.setItem('srs_folders', JSON.stringify(app.folders));
+        localStorage.setItem('srs_explicit_folders', JSON.stringify(app.explicitFolders));
+        syncToDisk();
+    }
+
+    async function createNewFolder() {
+        let name = await SysModal.prompt("New Folder Name?");
+        if (!name) return;
+        name = name.trim().replace(/\//g, ''); 
+        if (!name) return;
+        let newPath = app.currentFolder ? app.currentFolder + "/" + name : name;
+        if (!app.explicitFolders.includes(newPath)) { app.explicitFolders.push(newPath); saveFolders(); renderLibrary(); }
+    }
+
+    async function renameFolder(oldPath) {
+        const oldName = oldPath.split('/').pop(); const parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
+        let newName = await SysModal.prompt("Rename folder to:", oldName);
+        if (!newName || newName === oldName) return;
+        newName = newName.trim().replace(/\//g, '');
+        let newPath = parentPath ? parentPath + "/" + newName : newName;
+        Object.keys(app.folders).forEach(deck => {
+            if (app.folders[deck] === oldPath) app.folders[deck] = newPath;
+            else if (app.folders[deck].startsWith(oldPath + "/")) { app.folders[deck] = newPath + app.folders[deck].substring(oldPath.length); }
+        });
+        app.explicitFolders = app.explicitFolders.map(f => {
+            if (f === oldPath) return newPath;
+            if (f.startsWith(oldPath + "/")) return newPath + f.substring(oldPath.length);
+            return f;
+        });
+        saveFolders(); renderLibrary();
+		showToast("Folder Renamed")
+    }
+
+    async function moveFolder(oldPath) {
+        const folderName = oldPath.split('/').pop();
+        let target = await SysModal.prompt(`Move '${folderName}' to which folder path?\n(Leave empty to move to root)`, "");
+        if (target === null) return;
+        let cleanTarget = target.trim().replace(/^\/|\/$/g, '');
+        let newPath = cleanTarget ? cleanTarget + "/" + folderName : folderName;
+        if (newPath === oldPath || oldPath.startsWith(newPath + "/")) return SysModal.alert("Invalid move destination.");
+
+        moveFolderTo(oldPath, cleanTarget);
+    }
+
+    async function deleteFolder(path) {
+        let decksInside = Object.keys(app.folders).filter(d => app.folders[d] === path || app.folders[d].startsWith(path + "/"));
+        let msg = decksInside.length > 0 ? `WARNING: This folder contains ${decksInside.length} deck(s).\nDeleting it will permanently delete those decks and their stats!\nProceed?` : `Delete this empty folder?`;
+        if (await SysModal.confirm(msg)) {
+            decksInside.forEach(d => { delete app.lib[d]; delete app.folders[d]; localStorage.removeItem(`prog_${d}`); });
+            app.explicitFolders = app.explicitFolders.filter(f => f !== path && !f.startsWith(path + "/"));
+            saveFolders(); localStorage.setItem('srs_lib', JSON.stringify(app.lib)); renderLibrary();
+        }
+    }
+
+	function openMoveDeckModal(deckName) {
+		app.deckToMove = deckName;
+		const title = document.getElementById('move-modal-title');
+		
+		// Reset spacing to prevent 'too low' look
+		title.style.marginTop = "0";
+
+		// Smart Pluralization
+		if (!deckName) {
+			const checkedCount = document.querySelectorAll('.deck-checkbox:checked').length;
+			title.innerText = checkedCount === 1 ? "Move Selected Deck" : "Move Selected Decks";
+		} else {
+			title.innerText = "Move Deck";
+		}
+
+		const sel = document.getElementById('move-folder-select');
+		let options = `<option value="">[ Root Archivum ]</option>`;
+		
+		// Combine explicit folders and existing folder paths
+		let allFolders = new Set(app.explicitFolders);
+		Object.values(app.folders).forEach(f => { if(f) allFolders.add(f); });
+		
+		Array.from(allFolders).sort().forEach(f => {
+			let selected = (deckName && app.folders[deckName] === f) ? "selected" : "";
+			options += `<option value="${f}" ${selected}>📂 ${f}</option>`;
+		});
+		
+		sel.innerHTML = options;
+		document.getElementById('move-modal-overlay').style.display = 'flex';
+	}
+
+    function confirmMove() {
+        const target = document.getElementById('move-folder-select').value;
+        if (app.deckToMove === null) {
+            document.querySelectorAll('.deck-checkbox:checked').forEach(cb => {
+                const d = cb.value;
+                if (target === "") delete app.folders[d]; else app.folders[d] = target;
+            });
+            document.querySelectorAll('.deck-checkbox').forEach(cb => cb.checked = false);
+            toggleBulk();
+        } else {
+            if (target === "") delete app.folders[app.deckToMove]; else app.folders[app.deckToMove] = target;
+        }
+        saveFolders(); renderLibrary();
+        document.getElementById('move-modal-overlay').style.display = 'none';
+		showToast("Decks Relocated");
+    }
+
+    function renderBreadcrumbs() {
+        const crumbs = document.getElementById('breadcrumbs');
+        let html = `<span class="crumb-link" onclick="app.currentFolder=''; renderLibrary()" 
+                      ondragover="handleBreadcrumbDragOver(event)" ondragleave="handleBreadcrumbLeave(event)" 
+                      ondrop="handleBreadcrumbDrop(event, '')">Archivum</span>`;
+        if (app.currentFolder) {
+            let parts = app.currentFolder.split('/'); 
+            let buildPath = "";
+            parts.forEach((p, i) => {
+                buildPath += (i === 0 ? p : "/" + p);
+                html += `<span class="crumb-separator">/</span>`;
+                if (i === parts.length - 1) html += `<span class="crumb-active">${p}</span>`;
+                else html += `<span class="crumb-link" onclick="app.currentFolder='${buildPath}'; renderLibrary()" 
+                             ondragover="handleBreadcrumbDragOver(event)" ondragleave="handleBreadcrumbLeave(event)" 
+                             ondrop="handleBreadcrumbDrop(event, '${buildPath}')">${p}</span>`;
+            });
+        }
+        crumbs.innerHTML = html;
+    }
+
+	// Variable to track if we are currently editing
+	let isEditing = false;
+	let isDirty = false; // Tracks if you've actually typed anything
+
+	window.addEventListener('beforeunload', (e) => {
+		if (isEditing) {
+			// Most modern browsers show a generic message regardless of what you write here
+			e.preventDefault();
+			e.returnValue = ''; 
+		}
+	});
+
+	// Update your view switcher to set this variable
+	async function showView(viewId) {
+		// 1. Only nag if we ARE editing AND something has actually changed
+		if (isEditing && isDirty && viewId !== 'editor-view') {
+			const confirmLeave = await SysModal.confirm("You have unsaved changes. Return to the Archivum and lose your work?");
+			if (!confirmLeave) return;
+		}
+
+		// 2. Switching TO the editor? Reset the trackers.
+		if (viewId === 'editor-view') {
+			isEditing = true;
+			isDirty = false; // Start clean!
+		} else {
+			isEditing = false;
+			isDirty = false;
+		}
+
+		document.querySelectorAll('.view').forEach(v => {
+            v.style.display = 'none';
+            v.classList.remove('active');
+        });
+        
+		const target = document.getElementById(viewId);
+        target.style.display = 'block';
+        target.classList.add('active');
+
+        // THE MISSING LINK: This forces the screen to redraw the new streak!
+        if (viewId === 'library-view') renderLibrary();
+        if (viewId === 'stats-view') renderHeatmap();
+	}
+	
+	async function switchApp() {
+		// 1. Check the sentries (matching your showView logic)
+		if (isEditing && isDirty) {
+			const confirmLeave = await SysModal.confirm("You have unsaved changes. Go to Tabula Scripta and lose your work?");
+			if (!confirmLeave) return; // Stay put
+		}
+
+		// 2. Dissolve the browser's native guard
+		window.onbeforeunload = null;
+		isEditing = false;
+		isDirty = false;
+
+		// 3. The Great Leap
+		window.location.href = 'Tabula Scripta.html';
+	}
+	
+	// This listens for key presses inside the area where you type your card data
+	document.getElementById('answer-inputs').addEventListener('keydown', function(event) {
+		// Check if the key pressed was 'Enter' (Key code 13)
+		if (event.key === 'Enter') {
+			// Prevent the default behavior (like adding a new line if it were a textarea)
+			event.preventDefault();
+			
+			// Trigger your function!
+			addEntry();
+		}
+	});
+
+    function renderLibrary() {
+        const grid = document.getElementById('deck-grid'); grid.innerHTML = "";
+        renderBreadcrumbs(); toggleBulk(); 
+        
+        const now = Date.now();
+        let decksInView = []; 
+        let foldersInView = new Set();
+        const currentPrefix = app.currentFolder ? app.currentFolder + "/" : "";
+        const searchQuery = document.getElementById('library-search').value.toLowerCase();
+
+        if (searchQuery) {
+            Object.keys(app.lib).forEach(name => { if (name.toLowerCase().includes(searchQuery)) decksInView.push(name); });
+        } else {
+            const processPath = (folderPath) => {
+                if (folderPath.startsWith(currentPrefix) && folderPath !== "" && folderPath !== app.currentFolder) {
+                    let remainder = folderPath.substring(currentPrefix.length); let nextSlash = remainder.indexOf("/");
+                    let subFolder = nextSlash === -1 ? remainder : remainder.substring(0, nextSlash);
+                    foldersInView.add(currentPrefix + subFolder);
+                }
+            };
+            Object.keys(app.lib).forEach(name => {
+                const folderPath = app.folders[name] || "";
+                if (folderPath === app.currentFolder) decksInView.push(name);
+                processPath(folderPath);
+            });
+            app.explicitFolders.forEach(folderPath => { processPath(folderPath); });
+        }
+
+        let viewItems = [...Array.from(foldersInView), ...decksInView];
+        
+        let dirtyOrder = false;
+        viewItems.forEach(id => {
+            if (!app.sortOrder.includes(id)) {
+                app.sortOrder.push(id);
+                dirtyOrder = true;
+            }
+        });
+        if(dirtyOrder) localStorage.setItem('srs_sort_order', JSON.stringify(app.sortOrder));
+
+        viewItems.sort((a, b) => {
+            return app.sortOrder.indexOf(a) - app.sortOrder.indexOf(b);
+        });
+
+        viewItems.forEach(fullPath => {
+            const isDeck = fullPath.endsWith('.csv') || app.lib[fullPath];
+            
+            if (!isDeck) {
+                let displayName = fullPath.split('/').pop();
+                grid.innerHTML += `
+                <div class="card folder-card" draggable="true" 
+                     ondragstart="dragStart(event, '${fullPath}')" ondragend="dragEnd(event)"
+                     onclick="app.currentFolder='${fullPath}'; renderLibrary()" 
+                     ondragover="handleDragOver(event, '${fullPath}', true)" ondragleave="this.classList.remove('drag-nest', 'insert-before', 'insert-after')" ondrop="handleDrop(event, '${fullPath}')">
+                    <div style="position:absolute; top:8px; right:8px; display:flex; gap:8px;">
+                        <button onclick="event.stopPropagation(); showFolderStats('${fullPath}')" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; box-shadow:none;" title="Folder Stats">📊</button>
+                        <button onclick="event.stopPropagation(); renameFolder('${fullPath}')" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; box-shadow:none;" title="Rename Folder">📝</button>
+                        <button onclick="event.stopPropagation(); moveFolder('${fullPath}')" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; box-shadow:none;" title="Move Folder">📂</button>
+                        <button onclick="event.stopPropagation(); deleteFolder('${fullPath}')" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; color:var(--danger); box-shadow:none;" title="Delete Folder">✕</button>
+                    </div>
+                    <div class="folder-icon">📁</div><h3 style="margin:0">${displayName}</h3>
+                </div>`;
+            } else {
+				const name = fullPath;
+                const parsed = parseCSV(app.lib[name]);
+                if (!app.lib[name].includes("_id")) {
+                    app.lib[name] = sanitizeToCSV(parsed.headers, parsed.data);
+                    localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+                }
+
+                const prog = JSON.parse(localStorage.getItem(`prog_${name}`) || "{}");
+                const total = parsed.data.length; // renamed 'totalCards' to 'total' to match your existing code
+                const displayName = name.replace(/\.csv$/i, ''); 
+                const lastStudyText = prog._lastStudied ? new Date(prog._lastStudied).toLocaleDateString() : "Never";
+                const currentStreak = prog._streak || 0;
+                const now = Date.now();
+
+                // --- THE NEW SRS LOGIC ---
+                let upcoming = 0;
+                let doomed = 0;
+
+                Object.values(prog).forEach(p => { 
+                    if (p && p.next) { 
+                        if (p.next > now) {
+                            upcoming++;
+                            // Still count who is coming up in the next 24 hours
+                            if (p.next <= now + 86400000) doomed++;
+                        }
+                    }
+                });
+
+                // Calculation: Everything that isn't scheduled for the future is Due Now
+                const due = total - upcoming;
+                // --- END NEW LOGIC ---
+
+                const locationTag = (searchQuery && app.folders[name]) ? `<div style="font-size:0.85rem; color:var(--folder); margin-top:4px;">📁 ${app.folders[name]}</div>` : "";
+
+                // REORDERED DECK ICONS HERE
+                grid.innerHTML += `
+                    <div class="card" draggable="true" ondragstart="dragStart(event, '${name}')" ondragend="dragEnd(event)" 
+                         ondragover="handleDragOver(event, '${name}', false)" ondragleave="this.classList.remove('drag-nest', 'insert-before', 'insert-after')" ondrop="handleDrop(event, '${name}')">
+                        <div class="deck-header">
+                            <div class="deck-title-area">
+                                <h3 class="deck-title-text" title="${displayName}">
+                                    <input type="checkbox" class="deck-checkbox" value="${name}" onchange="toggleBulk()">
+                                    <span>${displayName}</span>
+                                </h3>
+                                ${locationTag}
+                            </div>
+                            <div class="deck-icons-area">
+                                <button onclick="renameDeck('${name}')" style="background:none; border:none; cursor:pointer; font-size:0.9rem; padding:0; color:var(--secondary); box-shadow:none;" title="Rename Deck">📝</button>
+                                <span style="color:#d35400; font-weight:bold;">🔥 ${currentStreak}</span>
+                                <button onclick="showDeckStats('${name}')" style="background:none; border:none; font-size:1.2rem; cursor:pointer; padding:0; box-shadow:none;" title="Deck Stats">📊</button>
+                            </div>
+                        </div>
+                        <div style="font-size:0.9rem; color:var(--secondary); margin: 4px 0;">Last Studied: ${lastStudyText}</div>
+                        <div style="font-size:1rem; font-weight:bold; color:var(--secondary)">${total} Cards</div>
+                        <div style="font-size:0.9rem; margin-top:5px; font-weight:bold; color:${due > 0 ? 'var(--danger)' : 'var(--success)'}">${due} Due Today | ${doomed} Tomorrow</div>
+                        <div class="doom-meter"><div class="doom-fill" style="width:${total > 0 ? (doomed/total)*100 : 0}%"></div></div>
+                        <div style="margin-top:15px;">
+                            <button class="btn-main" style="width:100%; margin-bottom: 8px;" onclick="prepStudy('${name}')">Study</button>
+                            <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content: space-between;">
+                                <div style="display:flex; gap:5px;">
+                                    <button onclick="openEditor('${name}')">✎ Edit</button>
+                                    <button onclick="openMoveDeckModal('${name}')" title="Move Deck">📂 Move</button>
+                                    <button onclick="exportCSV('${name}')" title="Export">⬇️</button>
+                                </div>
+                                <button onclick="deleteDeck('${name}')" style="color:var(--danger)" title="Delete">✕</button>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        });
+
+        if (viewItems.length === 0) {
+            let emptyMsg = searchQuery ? "No decks found matching your search." : "No decks here. Create a new deck or folder, or import a codex.";
+            grid.innerHTML += `<div style="grid-column: 1/-1; text-align:center; color:var(--secondary); padding:20px; font-style:italic;">${emptyMsg}</div>`;
+        }
+    }
+
+    async function renameDeck(oldName) {
+        let newName = await SysModal.prompt("New deck name:", oldName.replace(/\.csv$/i, ''));
+        if (newName && newName !== oldName.replace(/\.csv$/i, '')) {
+            newName = newName.endsWith('.csv') ? newName : newName + '.csv';
+            app.lib[newName] = app.lib[oldName]; delete app.lib[oldName];
+            if(app.folders[oldName]) { app.folders[newName] = app.folders[oldName]; delete app.folders[oldName]; }
+            let prog = localStorage.getItem(`prog_${oldName}`);
+            if (prog) { localStorage.setItem(`prog_${newName}`, prog); localStorage.removeItem(`prog_${oldName}`); }
+            let idx = app.sortOrder.indexOf(oldName);
+            if(idx !== -1) app.sortOrder[idx] = newName;
+            localStorage.setItem('srs_sort_order', JSON.stringify(app.sortOrder));
+            saveFolders(); localStorage.setItem('srs_lib', JSON.stringify(app.lib)); 
+            
+            if (app.activeDeck === oldName) {
+                app.activeDeck = newName;
+                document.getElementById('current-deck-name').innerText = newName.replace(/\.csv$/i, '');
+            }
+
+            renderLibrary();
+        }
+    }
+
+    function getDeckStats(deckName) {
+        const prog = JSON.parse(localStorage.getItem(`prog_${deckName}`) || "{}");
+        const { data, headers } = parseCSV(app.lib[deckName]);
+        let totalReviews = 0, totalCorrect = 0;
+        let dist = new Array(app.settings.intervals.length).fill(0);
+        let fieldStats = {}; 
+        
+        headers.forEach(h => { if(h!=='_id') fieldStats[h] = { c: 0, w: 0 }; });
+
+        Object.entries(prog).forEach(([key, p]) => {
+            if (!key.startsWith('_') && p.lvl !== undefined) {
+                totalReviews += (p.c || 0) + (p.w || 0); totalCorrect += (p.c || 0);
+                if(p.lvl < dist.length) dist[p.lvl]++;
+                if (p.stats) {
+                    Object.keys(p.stats).forEach(f => {
+                        if(!fieldStats[f]) fieldStats[f] = {c:0, w:0};
+                        fieldStats[f].c += (p.stats[f].c || 0);
+                        fieldStats[f].w += (p.stats[f].w || 0);
+                    });
+                }
+            }
+        });
+        return { total: data.length, reviews: totalReviews, correct: totalCorrect, dist, last: prog._lastStudied, fields: fieldStats };
+    }
+
+    function renderStatsUI(stats) {
+        const maxVal = Math.max(...stats.dist, 1);
+        const bars = stats.dist.map((count, i) => `<div class="lvl-bar" style="height:${(count/maxVal)*100}%"><span class="lvl-label">L${i}</span></div>`).join('');
+        
+        let fieldsHtml = "";
+        if (stats.fields) {
+            fieldsHtml = `<h4 style="margin-top:20px;">Accuracy By Field</h4><div style="display:flex; flex-wrap:wrap; gap:10px;">`;
+            Object.keys(stats.fields).forEach(f => {
+                const fs = stats.fields[f]; const tot = fs.c + fs.w;
+                const acc = tot > 0 ? Math.round((fs.c / tot) * 100) : 0;
+                if(tot > 0) fieldsHtml += `<div class="stat-card" style="padding:10px;"><div>${f}</div><div class="stat-val" style="font-size:1.1rem;">${acc}%</div></div>`;
+            });
+            fieldsHtml += `</div>`;
+        }
+
+        return `
+            <div class="stats-summary">
+                <div class="stat-card"><div>Cards</div><div class="stat-val">${stats.total}</div></div>
+                <div class="stat-card"><div>Accuracy</div><div class="stat-val">${stats.reviews > 0 ? Math.round((stats.correct/stats.reviews)*100) : 0}%</div></div>
+                <div class="stat-card"><div>Reviews</div><div class="stat-val">${stats.reviews}</div></div>
+            </div>
+            ${fieldsHtml}
+            <h4 style="margin-top:20px;">Level Distribution</h4>
+            <div class="lvl-bar-container">${bars}</div>
+        `;
+    }
+
+    function showDeckStats(deckName) {
+        const stats = getDeckStats(deckName);
+        document.getElementById('deck-stat-title').innerText = `${deckName.replace(/\.csv$/i, '')} Stats`;
+        document.getElementById('deck-stat-body').innerHTML = renderStatsUI(stats);
+        document.getElementById('stats-modal-overlay').style.display = 'flex';
+    }
+
+    function showFolderStats(folderPath) {
+        let folderStats = { total: 0, reviews: 0, correct: 0, dist: new Array(app.settings.intervals.length).fill(0), fields: {} };
+        Object.keys(app.folders).forEach(d => {
+            if (app.folders[d] === folderPath || app.folders[d].startsWith(folderPath + "/")) {
+                const s = getDeckStats(d);
+                folderStats.total += s.total; folderStats.reviews += s.reviews; folderStats.correct += s.correct;
+                s.dist.forEach((c, i) => folderStats.dist[i] += c);
+                if(s.fields) {
+                    Object.keys(s.fields).forEach(f => {
+                        if(!folderStats.fields[f]) folderStats.fields[f] = {c:0, w:0};
+                        folderStats.fields[f].c += s.fields[f].c; folderStats.fields[f].w += s.fields[f].w;
+                    });
+                }
+            }
+        });
+        document.getElementById('deck-stat-title').innerText = `${folderPath.split('/').pop()} (Folder Stats)`;
+        document.getElementById('deck-stat-body').innerHTML = renderStatsUI(folderStats);
+        document.getElementById('stats-modal-overlay').style.display = 'flex';
+    }
+
+    function showStatsView() {
+        let global = { total: 0, reviews: 0, correct: 0, dist: new Array(app.settings.intervals.length).fill(0) };
+        Object.keys(app.lib).forEach(name => {
+            const s = getDeckStats(name);
+            global.total += s.total; global.reviews += s.reviews; global.correct += s.correct;
+            s.dist.forEach((c, i) => global.dist[i] += c);
+        });
+        document.getElementById('global-stats-content').innerHTML = renderStatsUI(global);
+        showView('stats-view');
+    }
+
+	function renderHeatmap() {
+		let historyCounts = {};
+		
+		// 1. Get Today (Local)
+		const now = new Date();
+		now.setHours(0, 0, 0, 0); 
+		const todayLoc = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+		
+		let earliestDateStr = todayLoc;
+
+		// Gather history
+		Object.keys(app.lib).forEach(name => {
+			const prog = JSON.parse(localStorage.getItem(`prog_${name}`) || "{}");
+			if (prog._history) {
+				prog._history.forEach(dateStr => { 
+					historyCounts[dateStr] = (historyCounts[dateStr] || 0) + 1; 
+					if (dateStr < earliestDateStr) earliestDateStr = dateStr;
+				});
+			}
+		});
+
+		const container = document.getElementById('heatmap-container');
+		container.innerHTML = "";
+		const tooltip = document.getElementById('custom-tooltip');
+		
+		// 2. Setup the Date Range
+		const parts = earliestDateStr.split('-').map(Number);
+		let cursor = new Date(parts[0], parts[1] - 1, parts[2]); 
+		cursor.setHours(0, 0, 0, 0);
+		
+		// THE FIX: Move back to the nearest Sunday (0 = Sunday)
+		// If cursor is Monday (1), it goes back 1. If Sunday (0), it goes back 0.
+		const offset = cursor.getDay();
+		cursor.setDate(cursor.getDate() - offset);
+		
+		const dates = [];
+		// Use a fixed timestamp for today to avoid any weird "now" shifts during the loop
+		const todayTimestamp = now.getTime();
+
+		// 3. Fill the array
+		while (cursor.getTime() <= todayTimestamp) {
+			const y = cursor.getFullYear();
+			const m = String(cursor.getMonth() + 1).padStart(2, '0');
+			const d = String(cursor.getDate()).padStart(2, '0');
+			const dateStr = `${y}-${m}-${d}`;
+			
+			dates.push(dateStr);
+			cursor.setDate(cursor.getDate() + 1);
+		}
+
+		// 4. Render (Keep your existing cell/tooltip logic)
+		dates.forEach(dateStr => {
+			const count = historyCounts[dateStr] || 0;
+			let heatClass = `var(--heatmap-${count >= 50 ? 4 : count >= 30 ? 3 : count >= 10 ? 2 : count > 0 ? 1 : 0})`;
+
+			const cell = document.createElement('div');
+			cell.className = "heat-cell";
+			cell.style.background = heatClass;
+			
+			cell.onmouseenter = (e) => {
+				tooltip.innerHTML = `<strong>${dateStr}</strong><br>${count} reviews`;
+				tooltip.style.display = 'block';
+			};
+			cell.onmousemove = (e) => {
+				let x = e.clientX + 15, y = e.clientY + 15;
+				if (x + 100 > window.innerWidth) x = e.clientX - 110;
+				if (y + 50 > window.innerHeight) y = e.clientY - 50;
+				tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
+			};
+			cell.onmouseleave = () => { tooltip.style.display = 'none'; };
+			container.appendChild(cell);
+		});
+	}
+	
+    function openEditor(deckName) {
+        app.activeDeck = deckName; app.unsavedChanges = 0;
+        document.getElementById('current-deck-name').innerText = deckName.replace(/\.csv$/i, '');
+        const { headers, data } = parseCSV(app.lib[deckName] || "Field 1,Field 2\n");
+        app.sessionData = data;
+        
+        document.getElementById('answer-inputs').innerHTML = "";
+        headers.forEach((h, i) => { if (h !== "_id" && !h.startsWith('_')) createRowUI(Date.now() + i, h); });
+        
+        document.getElementById('card-id-hidden').value = ""; updatePreview(); showView('editor-view');
+    }
+
+    function createRowUI(id, headerValue) {
+        const div = document.createElement('div'); div.className = 'row'; div.id = `row-${id}`;
+        div.innerHTML = `
+            <input type="text" class="header-label" value="${headerValue}" placeholder="Field Name">
+            <input type="text" class="ans-val" placeholder="">
+            <div style="display:flex; flex-direction:column; gap:2px; justify-content:center;">
+                <button style="padding: 2px 5px; font-size:0.7rem;" onclick="moveRowUp(this)">▲</button>
+                <button style="padding: 2px 5px; font-size:0.7rem;" onclick="moveRowDown(this)">▼</button>
+            </div>
+            <button class="btn-danger" style="align-self:stretch;" onclick="this.parentElement.remove()">✕</button>`;
+        document.getElementById('answer-inputs').appendChild(div);
+    }
+
+    function moveRowUp(btn) { const row = btn.closest('.row'); if(row.previousElementSibling) { row.parentNode.insertBefore(row, row.previousElementSibling); updatePreview(); } }
+    function moveRowDown(btn) { const row = btn.closest('.row'); if(row.nextElementSibling) { row.parentNode.insertBefore(row.nextElementSibling, row); updatePreview(); } }
+
+    function addEntry() {
+        let entry = {};
+        const activeId = document.getElementById('card-id-hidden').value || generateId();
+        entry._id = activeId;
+        
+        let hasData = false;
+        document.querySelectorAll('#answer-inputs .row').forEach(row => {
+            const h = row.querySelector('.header-label').value.trim();
+            const val = row.querySelector('.ans-val').value.trim();
+            if (h) { entry[h] = val; if(val) hasData = true; }
+        });
+        if (!hasData) return SysModal.alert("Please fill out at least one field.");
+
+        const existingIdx = app.sessionData.findIndex(d => d._id === activeId);
+        if (existingIdx !== -1) app.sessionData[existingIdx] = entry; else app.sessionData.push(entry);
+        
+        app.unsavedChanges++; document.getElementById('unsaved-count').innerText = app.unsavedChanges;
+        // document.getElementById('unsaved-count').style.display = "inline";
+        cancelEdit(); updatePreview();
+		
+		const firstInput = document.querySelector('#answer-inputs .ans-val');
+        if (firstInput) firstInput.focus();
+    }
+
+    async function deleteEntry(id) {
+        if(await SysModal.confirm("Delete this card?")) {
+            app.sessionData = app.sessionData.filter(d => d._id !== id);
+            app.unsavedChanges++; document.getElementById('unsaved-count').innerText = app.unsavedChanges;
+            // document.getElementById('unsaved-count').style.display = "inline"; 
+			updatePreview();
+        }
+    }
+
+    function saveToLibrary() {
+        const headerSet = new Set(["_id"]);
+        document.querySelectorAll('.header-label').forEach(el => { if(el.value.trim()) headerSet.add(el.value.trim()); });
+        app.sessionData.forEach(row => Object.keys(row).forEach(k => headerSet.add(k))); 
+        
+        app.lib[app.activeDeck] = sanitizeToCSV(Array.from(headerSet), app.sessionData);
+        localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+        app.unsavedChanges = 0; document.getElementById('unsaved-count').style.display = 'none';
+        syncToDisk(); 
+		isDirty = false;
+        showToast("Changes Saved Successfully");
+        updatePreview();
+    }
+
+    async function saveAsCopy() {
+        let newName = await SysModal.prompt("Save as new capsa:");
+        if (!newName) return;
+        newName = newName.trim();
+        if(!newName.endsWith('.csv')) newName += '.csv';
+        if(app.lib[newName] && !(await SysModal.confirm("Deck exists. Overwrite?"))) return;
+
+        const headerSet = new Set(["_id"]);
+        document.querySelectorAll('.header-label').forEach(el => { if(el.value.trim()) headerSet.add(el.value.trim()); });
+        app.sessionData.forEach(row => Object.keys(row).forEach(k => headerSet.add(k)));
+        
+        app.lib[newName] = sanitizeToCSV(Array.from(headerSet), app.sessionData);
+        if (app.folders[app.activeDeck]) app.folders[newName] = app.folders[app.activeDeck];
+        
+        localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+        
+        app.sortOrder.push(newName);
+        localStorage.setItem('srs_sort_order', JSON.stringify(app.sortOrder));
+        
+        saveFolders(); 
+        
+        app.activeDeck = newName;
+        document.getElementById('current-deck-name').innerText = newName.replace(/\.csv$/i, '');
+        app.unsavedChanges = 0; document.getElementById('unsaved-count').style.display = 'none';
+        showToast(`Saved as ${newName}!`);
+    }
+
+    function exportFile(filename, content) { 
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.export_file) {
+            window.pywebview.api.export_file(filename, content); 
+        } else {
+            downloadBlob(content, filename); 
+        }
+    }
+    
+	async function exportFromEditor() { // Added 'async'
+        const headerSet = new Set(["_id"]); 
+        document.querySelectorAll('.header-label').forEach(el => { 
+            if(el.value.trim()) headerSet.add(el.value.trim()); 
+        });
+        
+        app.sessionData.forEach(row => Object.keys(row).forEach(k => headerSet.add(k)));
+        
+        const csvContent = sanitizeToCSV(Array.from(headerSet), app.sessionData);
+        const fileName = `${app.activeDeck.replace(/\.csv$/i, '')}_backup.csv`;
+
+        // --- THE UNIVERSAL BRIDGE CHECK ---
+        if (window.pywebview && window.pywebview.api) {
+            // DESKTOP: Native Save Dialog
+            try {
+                const result = await window.pywebview.api.export_individual_item(fileName, csvContent);
+                if (result === "SUCCESS") {
+                    showToast("CSV Exported to Disk!");
+                }
+            } catch (err) {
+                console.error("Desktop export failed:", err);
+            }
+        } else {
+            // WEB: Fallback to your existing exportFile function
+            exportFile(fileName, csvContent);
+        }
+    }
+    
+	async function exportCSV(deckName) { // Added 'async'
+        const { headers, data } = parseCSV(app.lib[deckName]);
+        const csvContent = sanitizeToCSV(headers, data);
+        const fileName = `${deckName.replace(/\.csv$/i, '')}.csv`;
+
+        // --- THE UNIVERSAL BRIDGE CHECK ---
+        if (window.pywebview && window.pywebview.api) {
+            // DESKTOP: Native Save Dialog
+            try {
+                const result = await window.pywebview.api.export_individual_item(fileName, csvContent);
+                if (result === "SUCCESS") {
+                    showToast("CSV Exported to Disk!");
+                }
+            } catch (err) {
+                console.error("Desktop export failed:", err);
+            }
+        } else {
+            // WEB: Fallback to your existing exportFile function
+            exportFile(fileName, csvContent);
+        }
+    }
+
+    function updatePreview() {
+        const search = document.getElementById('search-bar').value.toLowerCase();
+        
+        let displayHeaders = [];
+        const uiHeaders = Array.from(document.querySelectorAll('.header-label')).map(el => el.value.trim()).filter(h => h);
+        
+        if(uiHeaders.length === 0) {
+            const headerSet = new Set();
+            app.sessionData.forEach(row => Object.keys(row).forEach(k => { if (k !== "_id") headerSet.add(k); }));
+            displayHeaders = Array.from(headerSet);
+        } else { displayHeaders = uiHeaders; }
+
+        let html = `<table><tr><th style="width:100px; text-align:center;">Actions</th>
+            ${displayHeaders.map(h => `
+                <th style="min-width:200px; padding: 5px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; height: 100%;">
+                        <button class="btn-sm" style="margin-right:8px; opacity:0.6; box-shadow:none;" onclick="moveColSchema('${h}', -1)">◀</button>
+                        <div style="display:flex; align-items:center; gap:8px; flex:1; justify-content:center;">
+                            <span style="font-size:0.95rem; font-weight:bold;">${h}</span>
+                            <div style="display:flex; gap:2px;">
+                                <button class="btn-sm" style="border:none; background:none; cursor:pointer; color:var(--primary); font-size:1rem; box-shadow:none;" onclick="renameColumn('${h}')" title="Rename Column">✎</button> 
+                                <button class="btn-sm" style="border:none; background:none; cursor:pointer; color:var(--danger); font-size:1rem; box-shadow:none;" onclick="deleteColumn('${h}')" title="Delete Column">✕</button>
+                            </div>
+                        </div>
+                        <button class="btn-sm" style="margin-left:8px; opacity:0.6; box-shadow:none;" onclick="moveColSchema('${h}', 1)">▶</button>
+                    </div>
+                </th>`).join('')}
+            </tr>`;
+        
+        app.sessionData.filter(d => Object.values(d).some(v => v.toString().toLowerCase().includes(search))).forEach(row => {
+            html += `<tr><td style="white-space:nowrap; text-align:center;"><button onclick="startEdit('${row._id}')" style="padding:4px 8px;">✎</button> <button onclick="deleteEntry('${row._id}')" class="btn-danger" style="padding:4px 8px;">✕</button></td>`;
+            displayHeaders.forEach(h => html += `<td>${row[h]||''}</td>`); html += `</tr>`;
+        });
+        document.getElementById('table-container').innerHTML = html + `</table>`;
+    }
+
+    async function renameColumn(oldName) {
+        let newName = await SysModal.prompt("Rename column to:", oldName);
+        if (!newName || newName === oldName) return;
+        app.sessionData.forEach(row => { if (row[oldName] !== undefined) { row[newName] = row[oldName]; delete row[oldName]; } });
+        document.querySelectorAll('.header-label').forEach(input => { if (input.value === oldName) input.value = newName; });
+        app.unsavedChanges++; document.getElementById('unsaved-count').innerText = app.unsavedChanges;
+        // document.getElementById('unsaved-count').style.display = "inline"; 
+		updatePreview();
+    }
+
+    async function deleteColumn(colName) {
+        if(!(await SysModal.confirm(`Delete column '${colName}' from ALL cards in this deck? This cannot be undone.`))) return;
+        app.sessionData.forEach(row => { delete row[colName]; });
+        document.querySelectorAll('#answer-inputs .row').forEach(row => {
+            if(row.querySelector('.header-label').value.trim() === colName) row.remove();
+        });
+        app.unsavedChanges++; document.getElementById('unsaved-count').innerText = app.unsavedChanges;
+        // document.getElementById('unsaved-count').style.display = "inline"; 
+		updatePreview();
+    }
+
+	function moveColSchema(name, dir) {
+        const rows = Array.from(document.querySelectorAll('#answer-inputs .row'));
+        const idx = rows.findIndex(r => r.querySelector('.header-label').value === name);
+        if (idx === -1) return;
+        const row = rows[idx]; const parent = row.parentNode;
+        if (dir === -1 && row.previousElementSibling) parent.insertBefore(row, row.previousElementSibling);
+        else if (dir === 1 && row.nextElementSibling) parent.insertBefore(row.nextElementSibling, row);
+        
+        // This makes sure the changes are tracked and can be saved!
+        app.unsavedChanges++; 
+        document.getElementById('unsaved-count').innerText = app.unsavedChanges;
+        // document.getElementById('unsaved-count').style.display = "inline";
+        
+        updatePreview();
+    }
+
+	function startEdit(id) {
+		const d = app.sessionData.find(i => i._id === id);
+		if (!d) return;
+		document.getElementById('card-id-hidden').value = d._id;
+		const inputArea = document.getElementById('answer-inputs');
+		inputArea.innerHTML = ""; 
+		Object.keys(d).forEach((key, i) => {
+			if (key !== "_id" && !key.startsWith('_')) {
+				createRowUI(Date.now() + i, key);
+				const rows = inputArea.querySelectorAll('.row');
+				const lastRow = rows[rows.length - 1];
+				lastRow.querySelector('.ans-val').value = d[key] || "";
+			}
+		});
+		document.getElementById('input-card').classList.add('edit-mode');
+		document.getElementById('cancel-btn').style.display = 'inline-block';
+	}
+
+    function cancelEdit() {
+        document.getElementById('input-card').classList.remove('edit-mode'); document.getElementById('card-id-hidden').value = "";
+        document.querySelectorAll('.ans-val').forEach(v => v.value = ""); document.getElementById('cancel-btn').style.display = 'none';
+    }
+
+	function prepStudy(name) {
+		app.activeDeck = name;
+		const { headers } = parseCSV(app.lib[name]);
+		const langHeaders = headers.filter(h => h !== '_id' && !h.startsWith('_'));
+		
+		// LOAD SAVED SETTINGS
+		const saved = JSON.parse(localStorage.getItem(`settings_${name}`) || "{}");
+		const savedPrimary = saved.primaryField || langHeaders[0]; 
+		const savedLangs = saved.studyLangs || langHeaders.filter(h => h !== savedPrimary);
+
+		let promptSelect = `<select id="study-primary-field" onchange="updateStudyCheckboxes()" style="width:100%; padding:8px; font-weight:bold;">`;
+		langHeaders.forEach(h => {
+			promptSelect += `<option value="${h}" ${h === savedPrimary ? 'selected' : ''}>${h}</option>`;
+		});
+		promptSelect += `</select>`;
+
+		document.getElementById('lang-selection-list').innerHTML = `
+			<label style="font-weight:bold; font-family:'Cinzel', serif;">Primary Field (Prompt):</label><br>${promptSelect}
+			<label style="cursor:pointer; display:flex; align-items:center; gap:8px; margin: 15px 0; font-weight:bold; color:var(--primary);">
+				<input type="checkbox" id="cram-mode" style="width:20px; height:20px; accent-color:var(--primary);"> Cram Mode (Review All, No Stats)
+			</label>
+			<label style="font-weight:bold; display:block; font-family:'Cinzel', serif;">Fields to Test:</label>
+			<div id="study-checkboxes">
+			${langHeaders.map(h => {
+				const isPrimary = (h === savedPrimary);
+				const isChecked = savedLangs.includes(h);
+				return `
+				<div style="background:#eadecd; padding:10px; border-radius:2px; margin-bottom:5px; border:1px solid var(--parchment-border); ${isPrimary ? 'opacity:0.5;' : ''}">
+					<label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+						<input type="checkbox" class="lang-opt" value="${h}" 
+							${isChecked ? 'checked' : ''} 
+							${isPrimary ? 'disabled' : ''} 
+							style="width:20px; height:20px; accent-color:var(--primary);"> 
+						<span style="font-family:'Cinzel', serif; font-weight:bold;">${h.toUpperCase()}</span>
+					</label>
+				</div>`;
+			}).join('')}
+			</div>
+		`;
+        document.getElementById('modal-overlay').style.display = 'flex';
+        updateStudyCheckboxes();
+
+		// --- THE GOLDILOCKS CHECK ---
+        const prog = JSON.parse(localStorage.getItem(`prog_${name}`) || "{}");
+        const now = Date.now();
+        
+        // 1. Get the raw CSV string and count how many rows it has (excluding header)
+        const rawCSV = app.lib[name] || "";
+        const totalCards = rawCSV.trim().split('\n').length - 1;
+
+        // 2. Count how many cards in 'prog' are NOT due yet
+        const upcomingCount = Object.values(prog).filter(p => {
+            return p && p.next && p.next > now;
+        }).length;
+
+        // 3. If the number of 'upcoming' cards matches the 'total' cards, 
+        // it means everything is scheduled for the future.
+        if (totalCards > 0 && upcomingCount >= totalCards) {
+            const cramToggle = document.getElementById('cram-mode');
+            if (cramToggle) {
+                cramToggle.checked = true;
+                showToast("All cards are resting. Cram Mode enabled.");
+            }
+        }
+    }
+
+	function updateStudyCheckboxes() {
+		const prim = document.getElementById('study-primary-field').value;
+		document.querySelectorAll('.lang-opt').forEach(cb => {
+			// If the checkbox matches the dropdown value, turn it off and grey it out
+			if (cb.value === prim) {
+				cb.checked = false; 
+				cb.disabled = true; 
+				cb.closest('div').style.opacity = "0.5";
+			} else {
+				cb.disabled = false; 
+				cb.closest('div').style.opacity = "1";
+			}
+		});
+	}
+
+    function beginSession() {
+		app.primaryField = document.getElementById('study-primary-field').value;
+		app.cramMode = document.getElementById('cram-mode').checked;
+		
+		// Get all checked boxes
+		app.studyLangs = Array.from(document.querySelectorAll('.lang-opt:checked')).map(i => i.value);
+		
+		// SAVE THESE SETTINGS FOR NEXT TIME
+		const settings = {
+			primaryField: app.primaryField,
+			studyLangs: app.studyLangs
+		};
+		localStorage.setItem(`settings_${app.activeDeck}`, JSON.stringify(settings));
+
+		if(app.studyLangs.length === 0) return SysModal.alert("Select at least one field to test.");
+        
+        document.getElementById('modal-overlay').style.display = 'none';
+        
+        const prog = JSON.parse(localStorage.getItem(`prog_${app.activeDeck}`) || "{}");
+        app.streak = prog._streak || 0;
+        
+        const now = Date.now();
+        const { data } = parseCSV(app.lib[app.activeDeck]);
+        app.studyQueue = [];
+        data.forEach((row) => {
+            const p = prog[row._id] || { lvl: 0, next: 0, c: 0, w: 0, stats: {} };
+            if(app.cramMode || p.next <= now) app.studyQueue.push({ ...row, lvl: p.lvl });
+        });
+        if(app.studyQueue.length === 0) return SysModal.alert("All caught up!");
+        if(app.settings.shuffle) app.studyQueue.sort(() => Math.random() - 0.5);
+        if(app.settings.maxCards > 0) app.studyQueue = app.studyQueue.slice(0, app.settings.maxCards);
+        
+        app.studyIdx = 0; showView('study-view'); loadStudyCard();
+    }
+
+    function loadStudyCard() {
+        app.studyChecked = false; const c = app.studyQueue[app.studyIdx];
+        document.getElementById('study-q-text').innerText = c[app.primaryField];
+        document.getElementById('study-streak').innerText = app.streak;
+        
+        document.getElementById('study-streak-container').style.visibility = app.cramMode ? 'hidden' : 'visible';
+        
+        document.getElementById('card-index').innerText = `${app.studyIdx+1}/${app.studyQueue.length}`;
+        document.getElementById('card-lvl').innerText = app.cramMode ? "Cram Mode" : `Lvl ${c.lvl}`;
+        
+        document.getElementById('study-answers').innerHTML = app.studyLangs.map(l => `
+            <div style="margin-bottom:15px; text-align:left;">
+                <label style="font-size:0.8rem; font-family:'Cinzel', serif; font-weight:bold; color:var(--text);">${l.toUpperCase()}</label>
+                <input type="text" id="ans-${l}" style="width:100%; font-size:1.3rem; padding: 10px; box-sizing: border-box; border: 1px solid #a39276; border-radius: 2px; background:#fdfaf4;" onkeydown="handleEnterKey(event)" autocomplete="off">
+                <div id="cor-${l}" style="display:none; color:var(--danger); font-weight:bold; font-size:0.9rem; margin-top: 4px; font-family:'Cinzel', serif;">Correct: <span id="cor-val-${l}" style="font-family:'EB Garamond', serif;">${c[l]}</span></div>
+            </div>`).join('');
+            
+        document.getElementById('check-btn').innerText = "Check Answer";
+		btn.classList.add('btn-green');
+		btn.style.background = "";
+        setTimeout(() => { const first = document.querySelector('#study-answers input'); if(first) first.focus(); }, 50);
+    }
+
+    function handleEnterKey(e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleStudyAction(); } }
+
+	async function handleStudyAction() {
+		if (!app.studyChecked) {
+			const c = app.studyQueue[app.studyIdx];
+			let totalCorrect = true;
+			let hasBlank = false;
+			let fieldResults = {};
+
+			// 1. Validation
+			app.studyLangs.forEach(l => { 
+				if (!document.getElementById(`ans-${l}`).value.trim()) hasBlank = true; 
+			});
+			if (hasBlank) return SysModal.alert("Don't leave the boxes blank!");
+
+			// 2. Get existing progress for strike checking
+			const prog = JSON.parse(localStorage.getItem(`prog_${app.activeDeck}`) || "{}");
+			const cardProg = prog[c._id] || { stats: {} };
+			if (!cardProg.stats) cardProg.stats = {};
+
+			try {
+				for (const l of app.studyLangs) {
+					const inputEl = document.getElementById(`ans-${l}`);
+					let u = inputEl.value;
+					let r = c[l] || "";
+					let normU = normalizeString(u);
+					let normR = normalizeString(r);
+
+					if (normU === normR) {
+						// PERFECT MATCH
+						fieldResults[l] = true; 
+						inputEl.classList.add('input-correct');
+					} else {
+						// POTENTIAL TYPO OR WRONG
+						const dist = getLevenshtein(normU, normR);
+						const allowedTol = app.settings.typoTolerance;
+						let isTypo = false;
+
+						// Fetch strikes for THIS specific language on THIS card
+						let strikes = (cardProg.stats[l] && cardProg.stats[l].typo_strikes) ? cardProg.stats[l].typo_strikes : 0;
+
+						if (dist <= allowedTol && normU.length > 0 && allowedTol > 0) {
+							if (app.cramMode || strikes < 3) {
+								// Dynamic messaging based on the current strike
+								const strikeLabels = ["(1st Slip)", "(2nd Slip)", "(Final Warning)"];
+								const currentLabel = strikeLabels[strikes] || `(Strike ${strikes + 1})`;
+								
+								let promptMsg = app.cramMode 
+									? `Typo Detected (${l}):\n\nTyped: "${u}"\nExpected: "${r}"\n\nAccept this variation? (Cram Mode: No Penalty)` 
+									: `Orthographic Error (${l}):\n\nTyped: "${u}"\nExpected: "${r}"\n\nAccept as a typo? ${currentLabel}`;
+								
+								if (await SysModal.confirm(promptMsg)) {
+									isTypo = true;
+									fieldResults[l] = "typo";
+									inputEl.classList.add('input-correct');
+									inputEl.value = r; 
+								}
+							} else {
+								await SysModal.alert(`Maximum Tolerance Reached.\n\nTitivillus has claimed this card. Too many minor errors have been recorded for this field, so a perfect match is now required to proceed.`);
+							}
+						}
+
+						if (!isTypo) {
+							totalCorrect = false; 
+							fieldResults[l] = false; 
+							inputEl.classList.add('input-wrong');
+							document.getElementById(`cor-${l}`).style.display = 'block';
+						}
+					}
+				}
+			} finally {
+				// ALWAYS run this, even if the user hits "Cancel" or an error occurs
+				finalizeStudy(totalCorrect, fieldResults);
+			}
+		} else {
+			// NEXT CARD LOGIC
+			app.studyIdx++;
+			if (app.studyIdx >= app.studyQueue.length) finishSession();
+			else loadStudyCard();
+		}
+	}
+
+	function finalizeStudy(success, fieldResults) {
+		const c = app.studyQueue[app.studyIdx];
+		
+		if (!app.cramMode) {
+			const prog = JSON.parse(localStorage.getItem(`prog_${app.activeDeck}`) || "{}");
+			const p = prog[c._id] || { lvl: 0, next: 0, c: 0, w: 0, stats: {} };
+			if (!p.stats) p.stats = {};
+			
+			Object.keys(fieldResults).forEach(f => {
+				if (!p.stats[f]) p.stats[f] = { c: 0, w: 0, typo_strikes: 0 };
+				
+				if (fieldResults[f] === true) { 
+					// PERFECT: Increment correct count AND heal 1 strike
+					p.stats[f].c++; 
+					if (p.stats[f].typo_strikes > 0) p.stats[f].typo_strikes--; 
+				} else if (fieldResults[f] === "typo") {
+					// TYPO: Increment correct count but ADD 1 strike
+					p.stats[f].c++; 
+					p.stats[f].typo_strikes = (p.stats[f].typo_strikes || 0) + 1;
+				} else { 
+					// WRONG: Just increment wrong count
+					p.stats[f].w++; 
+				}
+			});
+
+			// SRS leveling logic
+			if (success) {
+				p.lvl = Math.min(p.lvl + 1, app.settings.intervals.length - 1);
+				p.c = (p.c || 0) + 1;
+			} else {
+				p.lvl = 0;
+				p.w = (p.w || 0) + 1;
+			}
+			
+			p.next = Date.now() + (app.settings.intervals[p.lvl] * 3600000);
+			prog[c._id] = p;
+			localStorage.setItem(`prog_${app.activeDeck}`, JSON.stringify(prog));
+			// Force the dashboard to update its numbers immediately
+			if (typeof renderLibrary === 'function') {
+				renderLibrary(); 
+			} else if (typeof showView === 'function') {
+				// If you don't have a renderLibrary function, 
+				// just navigating back to the library view might trigger it
+				showView('library-view');
+			}
+		}
+
+		// Sound effects
+		if (app.settings.sound) {
+			const snd = success ? document.getElementById('snd-correct') : document.getElementById('snd-wrong');
+			if (snd) snd.play();
+		}
+		
+		// UI state transition - This is what prevents the "Stuck" screen
+		app.studyChecked = true;
+		const btn = document.getElementById('check-btn');
+		btn.innerText = "Next Card";
+		btn.classList.remove('btn-main'); 
+		btn.classList.add('btn-green');
+		btn.style.background = "";
+	}
+
+    function finishSession() {
+        if (!app.cramMode) {
+            const prog = JSON.parse(localStorage.getItem(`prog_${app.activeDeck}`) || "{}");
+            const now = new Date();
+            const getLocDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const todayStr = getLocDate(now);
+            const lastDateStr = prog._lastStudiedDate || "";
+
+            if (lastDateStr !== todayStr) {
+                let streakBroken = false;
+                if (lastDateStr) {
+                    let checkDate = new Date(lastDateStr + "T00:00:00");
+                    checkDate.setDate(checkDate.getDate() + 1); 
+                    while (getLocDate(checkDate) < todayStr) {
+                        const dayEnd = new Date(getLocDate(checkDate) + "T23:59:59").getTime();
+                        let dueThatDay = false;
+                        for (const key in prog) {
+                            if (!key.startsWith('_') && prog[key].next && prog[key].next <= dayEnd) {
+                                dueThatDay = true; break;
+                            }
+                        }
+                        if (dueThatDay) { streakBroken = true; break; }
+                        checkDate.setDate(checkDate.getDate() + 1);
+                    }
+                }
+                if (streakBroken || !lastDateStr) prog._streak = 1; else prog._streak = (prog._streak || 0) + 1; 
+            }
+            
+            prog._lastStudiedDate = todayStr;
+            prog._lastStudied = Date.now();
+            if(!prog._history) prog._history = [];
+            if (prog._history[prog._history.length - 1] !== todayStr) prog._history.push(todayStr);
+            
+            localStorage.setItem(`prog_${app.activeDeck}`, JSON.stringify(prog));
+            app.streak = prog._streak; 
+            syncToDisk();
+        }
+        showView('library-view');
+    }
+
+    function downloadBlob(content, filename) { const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); }
+    
+    function showSettings() { 
+        document.getElementById('set-sound').checked = app.settings.sound; 
+        document.getElementById('set-shuffle').checked = app.settings.shuffle; 
+        document.getElementById('set-maxcards').value = app.settings.maxCards; 
+        document.getElementById('set-intervals').value = app.settings.intervals.join(', '); 
+        document.getElementById('set-ignoreCase').checked = app.settings.ignoreCase;
+        document.getElementById('set-ignorePunct').checked = app.settings.ignorePunct;
+        document.getElementById('set-typoTol').value = app.settings.typoTolerance;
+        showView('settings-view'); 
+    }
+    
+    function saveSettings() { 
+        app.settings.sound = document.getElementById('set-sound').checked; 
+        app.settings.shuffle = document.getElementById('set-shuffle').checked; 
+        app.settings.maxCards = parseInt(document.getElementById('set-maxcards').value) || 0; 
+        app.settings.intervals = document.getElementById('set-intervals').value.split(',').map(n => parseFloat(n.trim())); 
+        app.settings.ignoreCase = document.getElementById('set-ignoreCase').checked;
+        app.settings.ignorePunct = document.getElementById('set-ignorePunct').checked;
+        app.settings.typoTolerance = parseInt(document.getElementById('set-typoTol').value) || 0;
+        localStorage.setItem('srs_settings', JSON.stringify(app.settings)); 
+        syncToDisk(); showView('library-view'); 
+		showToast("Configurations Saved");
+    }
+	
+	async function deleteAllData() {
+		if (await SysModal.confirm("Are you absolutely certain? This will wipe ALL decks, folders, and progress permanently. This cannot be undone.")) {
+				const confirmation = await SysModal.prompt("Type 'DELETE' to confirm scriptural purgation:");
+				
+				if (confirmation === 'DELETE') {
+					// 1. Wipe LocalStorage
+					localStorage.removeItem('srs_lib');
+					localStorage.removeItem('srs_folders');
+					localStorage.removeItem('srs_explicit_folders');
+					localStorage.removeItem('srs_sort_order');
+					localStorage.removeItem('srs_settings');
+					
+					// 2. Clear progress for all decks
+					// This loops through any 'prog_' keys in localStorage and removes them
+					Object.keys(localStorage).forEach(key => {
+						if (key.startsWith('prog_')) {
+							localStorage.removeItem(key);
+						}
+					});
+
+					// 3. Reset App State
+					app.lib = {};
+					app.folders = {};
+					app.explicitFolders = [];
+					app.sortOrder = [];
+					app.settings = { ...defaultSettings };
+					
+					showToast("All records burnt.");
+					
+					// 4. Return to Library and Refresh
+					renderLibrary();
+					showView('library-view')
+				} else {
+					showToast("The records remain safe.");
+				}
+			}
+		}
+
+    function createNewRowManually() { createRowUI(Date.now(), ""); }
+	async function createNewDeck() {
+		const name = await SysModal.prompt("Enter a name for your new deck:", "");
+		
+		if (!name) return; // User cancelled
+		
+		if (app.lib[name]) {
+			return SysModal.alert("A deck with that name already exists!");
+		}
+
+		// 1. Create the empty deck with a header
+		// Assuming your CSVs use "Term,Definition" or similar
+		app.lib[name] = "_id,Term,Definition\n"; 
+		
+		// 2. Save it
+		localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+		
+		// 3. Update the UI
+		renderLibrary();
+
+		// 4. THE FIX: Immediately jump into the editor for this new deck
+		openEditor(name); 
+	}
+    async function deleteDeck(n) { if(await SysModal.confirm("Delete deck?")) { delete app.lib[n]; delete app.folders[n]; localStorage.removeItem(`prog_${n}`); saveFolders(); localStorage.setItem('srs_lib', JSON.stringify(app.lib)); renderLibrary(); } }
+    async function hardReset() { if(await SysModal.confirm("Wipe all data permanently?")) { localStorage.clear(); location.reload(); } }
+	function massImport(incomingJSON) {
+		try {
+			const imported = JSON.parse(incomingJSON);
+			let addedCount = 0;
+			let skippedCount = 0;
+
+			// 1. Merge the actual Codex data
+			if (imported.lib) {
+				for (const id in imported.lib) {
+					// Check if it already exists in app.lib
+					if (!app.lib[id]) {
+						app.lib[id] = imported.lib[id];
+						// Sync folder assignment
+						app.folders[id] = imported.folders[id] || ""; 
+						addedCount++;
+					} else {
+						skippedCount++;
+					}
+				}
+			}
+
+			// 2. Merge Folder Hierarchy (The explicit folders list)
+			if (imported.explicitFolders) {
+				imported.explicitFolders.forEach(folderPath => {
+					if (!app.explicitFolders.includes(folderPath)) {
+						app.explicitFolders.push(folderPath);
+					}
+				});
+			}
+
+			// Save everything to localStorage
+			localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+			localStorage.setItem('srs_folders', JSON.stringify(app.folders));
+			localStorage.setItem('srs_explicit_folders', JSON.stringify(app.explicitFolders));
+			
+			// Force an immediate save to the hard drive after importing
+			if (window.triggerAutoBackups) {
+				window.triggerAutoBackups();
+			}
+			
+		document.getElementById('sync-indicator').innerText = "✅ Desktop Active";
+
+			showToast("📜 Library Expanded!");
+			renderLibrary(); // Refresh the Archivum view
+			
+			SysModal.alert(`Import Complete!\nAdded: ${addedCount} codices\nSkipped (Duplicates): ${skippedCount}`);
+		} catch (e) {
+			console.error(e);
+			SysModal.alert("Failed to parse the import file. Make sure it's a valid Scriptorium/Tabula JSON.");
+		}
+	}
+
+	window.addEventListener('DOMContentLoaded', () => {
+		const fileInput = document.getElementById('fileLoad');
+		if (fileInput) {
+			fileInput.onchange = (e) => handleFileImport(e);
+		}
+	});
+
+	// Then define the logic as a separate function
+	async function handleFileImport(e) {
+		const file = e.target.files[0];
+		if (!file) return;
+
+		const reader = new FileReader();
+		reader.onload = async (event) => {
+			const content = event.target.result;
+			const name = file.name.replace('.csv', '');
+
+			app.lib[name] = content;
+			localStorage.setItem('srs_lib', JSON.stringify(app.lib));
+			
+			// Force an immediate save to the hard drive after importing
+			if (window.triggerAutoBackups) {
+				window.triggerAutoBackups();
+			}
+			
+		document.getElementById('sync-indicator').innerText = "✅ Desktop Active";
+
+			if (window.renderLibrary) renderLibrary();
+			await SysModal.alert(`Deck "${name}" imported successfully!`);
+			e.target.value = '';
+		};
+		reader.readAsText(file);
+	}
+
+	function handleMassFile(input) {
+		const file = input.files[0];
+		if (!file) return;
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			massImport(e.target.result);
+			input.value = ''; // Reset the input
+		};
+		reader.readAsText(file);
+	}
+
+    renderLibrary();
+	
+	function exportLibrary() {
+		const backup = {
+			lib: app.lib,
+			folders: app.folders,
+			explicitFolders: app.explicitFolders,
+			sortOrder: app.sortOrder,
+			settings: app.settings
+		};
+		const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `scriptorium_full_backup_${new Date().toISOString().slice(0,10)}.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+	} // <--- This was the missing bracket!
+
+	function exportAllData() {
+		const payload = { 
+			lib: app.lib, 
+			folders: app.folders, 
+			explicitFolders: app.explicitFolders, 
+			sortOrder: app.sortOrder,
+			settings: app.settings 
+		};
+		const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `scriptorium_total_export_${new Date().toISOString().slice(0,10)}.json`;
+		document.body.appendChild(a); 
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+	
+	// This only flips the "dirty" switch if you actually type in the editor
+	document.getElementById('editor-view').addEventListener('input', () => {
+		isDirty = true;
+	});
+	
+	// --- THE MASTER BACKUP HANDSHAKE ---
+	window.triggerAutoBackups = function() {
+		if (window.pywebview && window.pywebview.api) {
+			// Construct the payload exactly like your old working version did
+			const payload = { 
+				lib: app.lib, 
+				settings: app.settings, 
+				folders: app.folders, 
+				explicitFolders: app.explicitFolders, 
+				sortOrder: app.sortOrder, 
+				progress: {} 
+			};
+			
+			// Grab progress for each deck
+			Object.keys(app.lib).forEach(deck => { 
+				payload.progress[deck] = JSON.parse(localStorage.getItem(`prog_${deck}`) || "{}"); 
+			});
+
+			const dataString = JSON.stringify(payload);
+
+			// CALL THE CORRECT FUNCTION NAME
+			window.pywebview.api.save_to_disk(dataString).then(res => {
+				console.log("Python says:", res);
+			});
+		}
+	};
+
+</script>
+<div id="toast-msg" class="toast"></div>
+<div id="sys-modal-overlay" style="position: fixed; inset: 0; background: rgba(20, 10, 5, 0.75); display: none; align-items: center; justify-content: center; z-index: 3000;">
+	<div class="modal" style="max-width: 600px; width: 90%; background: var(--card); padding: 25px; border-radius: 4px; border: 2px solid var(--primary); box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
+		
+		<h3 id="sys-modal-title" style="font-family:'Cinzel', serif; font-size:1.17rem; color:var(--text); margin: 0 0 10px 0;">Ars Memoria</h3>
+		<p id="sys-modal-msg" style="font-size:1rem; color:var(--secondary); margin: 0 0 20px 0;"></p>
+		
+		<input type="text" id="sys-modal-input" style="width: 96%; padding: 10px; margin-bottom: 20px; border: 1px solid #a39276; display: none;">
+		
+		<div style="display:flex; gap:10px;">
+			<button id="sys-btn-ok" class="btn-main" style="flex:1; background:#eadecd; color:var(--text); border-color:#a39276;">Confirm</button>
+			<button id="sys-btn-cancel" class="btn-main" style="flex:1;">Cancel</button>
+		</div>
+	</div>
+</div>
+</body>
+</html>

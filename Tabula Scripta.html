@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabula Scripta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+    <style>
+		body { transition: opacity 0.3s ease-in-out; }
+		body.fonts-loading { opacity: 0; }
+		@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=UnifrakturMaguntia&display=swap');
+        :root {
+            /* Medieval / Parchment Palette */
+            --bg: #e6d8c3; 
+            --card: #f4ecdf; 
+            --primary: #800000; /* Crimson/Blood Red Ink */
+            --success: #2e5a27; /* Forest Green */
+            --danger: #8b0000; 
+            --warning: #b8860b; /* Goldenrod */
+            --text: #2c1e16; /* Deep brown/black ink */
+            --secondary: #5c4a3d;
+            --folder: #4a3320; 
+			--heatmap-0: #dccbb3; /* Blank: Aged Paper */
+			--heatmap-1: #b8860b; /* Low: Dark Goldenrod */
+			--heatmap-2: #daa520; /* Med: Goldenrod */
+			--heatmap-3: #ffd700; /* High: Gold */
+			--heatmap-4: #fdf5e6; /* Peak: Glowing White-Gold */
+            --parchment-border: #a8947a;
+        }
+		html { 
+            overflow: hidden; /* This removes the permanent gray track */
+        }
+        body { 
+            font-family: 'EB Garamond', serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #e6d8c3; 
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0) 100%),
+                linear-gradient(135deg, #e3d6b1 25%, transparent 25%), 
+                linear-gradient(225deg, #e3d6b1 25%, transparent 25%), 
+                linear-gradient(45deg, #e3d6b1 25%, transparent 25%), 
+                linear-gradient(315deg, #e3d6b1 25%, transparent 25%);
+            background-size: 100% 100%, 4px 4px, 4px 4px, 4px 4px, 4px 4px;
+            color: var(--text);
+            
+            /* Scrolling Logic */
+            height: 100vh;
+            overflow-y: auto;   /* Allows scrolling with wheel */
+            overflow-x: hidden; /* Stops side-to-side wiggle */
+
+            /* Hide Scrollbar for Firefox & Edge */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        /* Hide Scrollbar for Chrome & WebView2 */
+        body::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+		body::after {
+			content: "";
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			/* This gradient starts transparent and turns into a deep brown/burnt edge at the corners */
+			background: radial-gradient(circle, transparent 50%, rgba(44, 30, 22, 0.4) 100%);
+			pointer-events: none; /* Very important: allows you to click buttons through the vignette */
+			z-index: 50; /* Keeps the vignette on top of everything */
+		}
+        
+        h1, h2, h3, h4, .sys-modal-header, .crumb-link, .deck-title-text, .folder-icon, th {
+            font-family: 'Cinzel', serif;
+        }
+
+        .gothic-text { font-family: 'UnifrakturMaguntia', cursive; }
+        
+		/* --- Navigation --- */
+        nav { 
+            background: #24150f; 
+            background-image: linear-gradient(to bottom, #2b1a13, #1a0f0a);
+            color: #f2e3c6; 
+            padding: 1rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+            border-bottom: 3px solid var(--primary);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .nav-links { display: flex; gap: 10px; }
+        .nav-links button { 
+            background: transparent; 
+            border: 1px solid #5c4a3d; 
+            color: #f2e3c6; 
+            padding: 6px 15px; 
+            border-radius: 2px; 
+            cursor: pointer; 
+            font-family: 'UnifrakturMaguntia', cursive;
+            font-size: 1.15rem;
+            transition: all 0.2s;
+            box-shadow: none;
+            letter-spacing: 1px;
+        }
+        .nav-links button:hover { background: #3d261d; border-color: var(--primary); }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        .view { display: none; animation: fadeIn 0.3s ease; } .view.active { display: block; }
+		@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+		/* --- Cards --- */
+        .card { 
+            background: var(--card); 
+            padding: 20px; 
+            border-radius: 3px; 
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.15), inset 0 0 15px rgba(139, 69, 19, 0.04); 
+            border: 1px solid var(--parchment-border);
+            margin-bottom: 20px; 
+            position: relative; 
+        }
+        .edit-mode { border: 2px solid var(--primary); background: #fdf8f0; }
+        
+        .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; background: transparent; padding: 5px; border-radius: 2px; border: 1px solid transparent; }
+        label { font-weight: bold; padding-top: 5px; }
+        
+        .header-label, input[type="number"], input[type="text"], select { 
+            padding: 8px; 
+            border: 1px solid var(--parchment-border); 
+            border-radius: 2px; 
+            background: #fdfaf4;
+            color: var(--text);
+            font-family: 'EB Garamond', serif;
+            font-size: 1rem;
+        }
+        .header-label { width: 120px; font-weight: bold; background: #eadecd; }
+        .ans-val { flex-grow: 1; }
+        
+        button { 
+            padding: 8px 15px; 
+            cursor: pointer; 
+            border-radius: 2px; 
+            border: 1px solid #a39276; 
+            background: #e3d2ba; 
+            font-family: 'EB Garamond', serif;
+            font-weight: bold; 
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.1s ease;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+        }
+		/* --- BUTTON HOVER REFINEMENT --- */
+
+		button:hover { background: #d4bf9f; }
+		button:active { transform: translateY(1px); box-shadow: 0 0 1px rgba(0,0,0,0.2); }
+
+		/* Primary / Red-toned buttons */
+		.btn-main { background: var(--primary); color: #f4ecdf; border: 1px solid #4a0000; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-main:hover { background: #5e0000; }
+
+		/* Folder / Woody-toned buttons */
+		.btn-folder { background: #4a3320; color: #f4ecdf; border: 1px solid #2c1e16; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-folder:hover { background: #322215 !important; }
+
+		/* Danger buttons (sharing main's hover logic usually works well) */
+		.btn-danger { background: var(--danger); color: #f4ecdf; border: 1px solid #4a0000; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-danger:hover { background: #821515; }
+
+		/* Parchment / White buttons (Dimming slightly to a darker tan) */
+		.btn-white { background: #f4ecdf; color: var(--text); border: 1px solid #d4c7b0; text-shadow: none; }
+		.btn-white:hover { background: #e6d8c1; }
+
+		/* Mute Brown / Secondary (The mid-tone brown) */
+		.btn-mutebrown { background: var(--secondary); color: #f4ecdf; border: 1px solid #6b4f3b; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-mutebrown:hover { background: #7a5e48; }
+
+		/* Dark Brown / Text (Going almost black-brown) */
+		.btn-darkbrown { background: var(--text); color: #f4ecdf; border: 1px solid #1a1512; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-darkbrown:hover { background: #1a1512; }
+
+		/* Success / Green buttons (A deeper, foresty green) */
+		.btn-green { background: var(--success); color: #f4ecdf; border: 1px solid #1e351e; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+		.btn-green:hover { background: #254225; }
+
+		.btn-sm { padding: 2px 6px; font-size: 0.85rem; margin: 0 2px; }
+
+        .deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .doom-meter { height: 6px; background: #dccbb3; border-radius: 1px; margin: 10px 0; overflow: hidden; border: 1px solid var(--parchment-border); }
+        .doom-fill { height: 100%; background: var(--warning); transition: width 0.3s; }
+
+        /* FOLDER STYLES */
+        .folder-card { 
+            background: #dbcca4; 
+            border: 2px solid #8b5a2b; /* Replaced dashed */
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+            min-height: 150px; 
+            position: relative; 
+            transition: all 0.2s; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.08);
+        }
+        .folder-card:hover { background: #cbb488; transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(139, 69, 19, 0.15); border-color: var(--primary); }
+        .folder-icon { font-size: 3rem; margin-bottom: 10px; color: var(--folder); pointer-events: none; }
+        
+        .deck-header { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 10px; }
+        .deck-title-area { flex: 1; min-width: 0; overflow: hidden; }
+        .deck-title-text { margin: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1.3rem; }
+        .deck-title-text span { overflow: hidden; text-overflow: ellipsis; }
+        .deck-icons-area { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+
+		/* BREADCRUMBS */
+        .breadcrumb { margin-bottom: 15px; font-size: 1.2rem; color: var(--secondary); display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+        .crumb-link { cursor: pointer; text-decoration: none; color: var(--primary); padding: 2px 6px; border-radius: 2px; border: 1px solid transparent; transition: all 0.2s; }
+        /* .crumb-link:hover { background: #dcd0b8; border-color: #a39276; } */
+        .crumb-active { cursor: default; text-decoration: none; font-weight: bold; color: var(--text); padding: 2px 6px; }
+        .crumb-separator { cursor: default; text-decoration: none; color: #a39276; font-weight: normal; padding: 0 5px; user-select: none; }
+        
+		/* DRAG AND DROP VISUALS */
+        .drag-nest { background-color: #c0d1b4 !important; border-color: var(--success) !important; outline: 3px solid var(--success); } /* Replaced dashed */
+        .insert-before { border-left: 6px solid var(--primary) !important; padding-left: 14px !important; }
+        .insert-after { border-right: 6px solid var(--primary) !important; padding-right: 14px !important; }
+        .drag-sort-active { opacity: 0.5; border: 2px solid var(--primary); } /* Replaced dashed */
+        [draggable="true"] { cursor: grab; } [draggable="true"]:active { cursor: grabbing; }
+
+        /* Modal Overlays */
+        #modal-overlay, #stats-modal-overlay, #move-modal-overlay, #sys-modal-overlay { position: fixed; inset: 0; background: rgba(20, 10, 5, 0.75); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal { 
+            background: var(--card); 
+            padding: 25px; 
+            border-radius: 4px; 
+            border: 2px solid var(--primary);
+            width: 90%; 
+            max-width: 600px; 
+            max-height: 90vh; 
+            overflow-y: auto; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6), inset 0 0 30px rgba(139,69,19,0.08); 
+        }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--card); border: 1px solid var(--parchment-border); }
+        th, td { border: 1px solid var(--parchment-border); padding: 10px; text-align: left; font-size: 0.95em; }
+        th { background: #eadecd; font-family: 'Cinzel', serif; font-weight: 600; }
+		thead th {
+			position: sticky;
+			top: 0;
+			z-index: 20;
+			background: var(--card); /* Match your parchment color */
+			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		}
+
+		#current-section-display {
+			position: sticky;
+			left: 0; /* Keep it pinned if you scroll horizontally too */
+			z-index: 30;
+		}
+        
+        .stats-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #eadecd; padding: 15px; border-radius: 3px; text-align: center; border: 1px solid var(--parchment-border); box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
+        .stat-val { font-size: 1.6rem; font-weight: bold; color: var(--primary); font-family: 'Cinzel', serif; }
+        
+        .lvl-bar-container { display: flex; align-items: flex-end; gap: 10px; height: 100px; padding: 20px; background: #eadecd; border-radius: 8px; border: 1px solid var(--parchment-border); }
+        .lvl-bar { flex: 1; background: var(--primary); border-radius: 1px 1px 0 0; min-height: 2px; position: relative; }
+        .lvl-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; color: var(--secondary); font-weight: bold; }
+
+        .heatmap { display: grid; grid-template-columns: repeat(52, 1fr); grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; padding: 15px; background: var(--card); border-radius: 3px; border: 1px solid var(--parchment-border); overflow-x: auto; }
+        .heat-cell { width: 12px; height: 12px; border-radius: 1px; background: var(--heatmap-0); cursor: pointer; border: 1px solid rgba(0,0,0,0.05); }
+        
+        #custom-tooltip {
+            position: fixed; background: #24150f; color: #f2e3c6; padding: 6px 12px; border-radius: 2px; font-size: 0.9rem;
+            pointer-events: none; z-index: 9999; display: none; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid var(--primary); font-family: 'EB Garamond', serif;
+        }
+        /* --- Editor Styles (Overhauled to match Image) --- */
+        .editor-header { display: flex; gap: 20px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+		.editor-row {
+			display: grid;
+			align-items: center; /* This keeps everything on one horizontal line */
+			padding: 10px;
+			border-bottom: 1px solid var(--parchment-border);
+		}
+        .editor-section { background: #eadecd; padding: 15px; margin-top: 15px; border: 1px solid var(--primary); border-radius: 2px; display: flex; justify-content: space-between; align-items: center; gap: 10px; } 
+        .input-bare { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 2px; box-sizing: border-box; font-family: 'EB Garamond', serif; font-size: 1.05rem; background: #fdfaf4; color: var(--text-main); }
+		.action-btns {
+			display: flex;
+			gap: 4px;
+			justify-content: flex-start; /* Aligns buttons to the left of the 100px area */
+			align-items: center;
+			width: 100%;
+		}
+		
+		/* Force all editor control buttons to be identical small squares */
+		#view-editor .btn-sm, 
+		#view-editor .btn-danger.btn-sm {
+			min-width: 28px !important;
+			width: 28px !important;
+			height: 28px !important;
+			padding: 0 !important;
+			display: inline-flex !important;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.9rem !important;
+			flex: none !important;
+		}
+
+		/* Ensure the 'Column Config' row aligns vertically with the data rows */
+		.editor-row {
+			align-items: center !important;
+		}
+        
+        .editor-row { display: grid; gap: 10px; align-items: center; background: transparent; padding: 10px; border-bottom: 1px solid var(--parchment-border); } 
+        .editor-section { background: #eadecd; padding: 15px; margin-top: 15px; border: 1px solid var(--primary); border-radius: 2px; display: flex; justify-content: space-between; align-items: center; gap: 10px; } 
+		/* Vertical and Horizontal Alignment for Editor Action Buttons */
+		.action-btns {
+			display: flex;
+			gap: 4px;
+			width: 100px; /* Matching your grid math */
+			justify-content: flex-start; /* Move to the LEFT */
+			align-items: center; 
+		}
+		
+		/* Push the 'Column Config' label to the bottom of its taller row */
+		.editor-row > div:first-child {
+			align-self: end;
+			padding-bottom: 8px; /* Adjust this to line up with inputs */
+		}
+
+		/* Push the +/- buttons to the bottom-left of their taller row */
+		.action-btns {
+			display: flex;
+			gap: 4px;
+			justify-content: flex-start; /* Stays on the LEFT */
+			align-self: end !important;  /* This moves it DOWN */
+			padding-bottom: 8px;         /* Fine-tune to line up with inputs */
+		}
+
+		/* Ensure the + and - buttons are identical squares */
+		.action-btns .btn-sm {
+			min-width: 28px !important;
+			width: 28px !important;
+			height: 28px !important;
+			padding: 0 !important;
+		}
+        
+        /* --- Drill Table Styles --- */
+        .drill-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--parchment-border); padding-bottom: 15px; margin-bottom: 20px; } 
+        .drill-info h2 { margin: 0; color: var(--primary); }
+        .timer { font-family: 'EB Garamond', serif; font-size: 2.5rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+        .timer.danger { color: var(--danger); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        .table-wrapper { overflow-x: auto; border-radius: 3px; border: 1px solid var(--parchment); background: var(--card); }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--parchment-border); text-align: center; }
+        th { background: #eadecd; color: var(--text); font-size: 0.95rem; text-transform: none; font-weight: 700; }
+        
+		.section-row td {
+			background: transparent !important; /* Disappears into the parchment */
+			border: none !important;            /* Removes the "line" */
+			color: transparent;                 /* Hides the redundant text in the row */
+			height: 0px;                       /* Acts as a subtle spacer instead of a wall */
+			padding: 0;
+			pointer-events: none;               /* So it doesn't interfere with clicks */
+		}
+        .label-cell { text-align: left; font-weight: 600; color: var(--secondary); font-family: 'EB Garamond', serif; background: #fdf8f0; font-size: 1.1rem; white-space: nowrap; }
+        
+        input.drill-input { width: 100%; padding: 10px; border: 1px solid var(--parchment-border); border-radius: 2px; text-align: center; font-size: 1.1rem; transition: all 0.2s; box-sizing: border-box; background: #fdfaf4; font-family: 'EB Garamond', serif; color: var(--text); }
+        input.drill-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(128, 0, 0, 0.2); background: #fff; }
+        .correct { background-color: #dcedd6 !important; color: var(--success) !important; border-color: var(--success) !important; font-weight: bold; }
+        .blank-cell { background: #dbcca4; color: #a39276; font-weight: bold; user-select: none; }
+
+        /* --- Scoreboard Styles --- */
+        .score-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--card); }
+        .score-table th { background: #eadecd; padding: 10px; border: 1px solid var(--parchment-border); font-family: 'Cinzel', serif; text-align: left;}
+        .score-table td { padding: 10px; border: 1px solid var(--parchment-border); }
+        .score-bar-container { width: 100%; background: #e6d8c3; border-radius: 2px; overflow: hidden; height: 8px; margin-top: 5px; border: 1px solid #cbbba1; }
+        .score-bar { height: 100%; background: var(--primary); }
+
+        /* --- Settings Styles --- */
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--parchment-border); gap: 30px; } 
+        .settings-row label { flex: 1; font-weight: bold; font-size: 1.1rem; }
+        .settings-subtext { font-size: 0.9rem; color: var(--secondary); font-weight: normal; display: block; margin-top: 4px; font-style: italic; }
+
+        /* Modal Overlays */
+        #sys-modal-overlay, #move-modal-overlay, #win-modal { position: fixed; inset: 0; background: rgba(20, 10, 5, 0.75); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal { background: var(--card); padding: 25px; border-radius: 4px; border: 2px solid var(--primary); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.6), inset 0 0 30px rgba(139,69,19,0.08); }
+        .win-title { font-size: 2.5rem; color: var(--success); margin: 0 0 10px 0; text-align: center; }
+
+        .sys-modal-header { font-size: 1.5rem; margin-bottom: 10px; color: var(--primary); border-bottom: 1px solid var(--parchment-border); padding-bottom: 5px; }
+        .sys-modal-body { margin-bottom: 20px; font-size: 1.1rem; color: var(--text); white-space: pre-wrap; }
+        .sys-modal-input { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #a39276; border-radius: 2px; font-size: 1rem; display: none; box-sizing: border-box; background: #fdfaf4; }
+        .sys-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+		
+		.toast {
+			/* Kill all inherited styles from body/divs */
+			all: unset; 
+			
+			/* Position */
+			position: fixed;
+			left: 50%;
+			bottom: 30px;
+			transform: translateX(-50%) translateY(20px);
+			
+			/* Visuals */
+			background: #2b1b12 !important; /* Dark ink brown */
+			color: #f4ecdf !important;     /* Parchment cream */
+			padding: 12px 28px !important;
+			border: 1px solid #800000 !important; /* Crimson border */
+			border-radius: 4px !important;
+			box-shadow: 0 8px 20px rgba(0,0,0,0.6) !important;
+			
+			/* Typography */
+			font-family: 'EB Garamond', serif !important;
+			font-size: 1.1rem !important;
+			text-align: center !important;
+			white-space: nowrap !important;
+			
+			/* Animation Logic */
+			z-index: 20000 !important;
+			opacity: 0;
+			pointer-events: none;
+			transition: transform 0.3s ease, opacity 0.3s ease;
+			display: block !important;
+		}
+
+		.toast.show {
+			opacity: 1 !important;
+			transform: translateX(-50%) translateY(0) !important;
+		}
+        @keyframes fadeOut { from {opacity:1; transform: translate(-50%, 0);} to {opacity:0; transform: translate(-50%, 20px);} }
+
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--parchment-border); gap: 30px; } /* Replaced dashed */
+        .settings-row label { flex: 1; min-width: 200px; font-weight: bold; }
+        .input-correct { background-color: #dcedd6 !important; border-color: var(--success) !important; }
+        .input-wrong { background-color: #f7d7d7 !important; border-color: var(--danger) !important; }
+        #sync-indicator { font-size: 0.9rem; color: #c5ad8d; margin-left: 20px; font-family: 'EB Garamond', serif; }
+
+        .deck-checkbox { cursor: pointer; z-index: 10; width:18px; height:18px; margin:0; flex-shrink: 0; accent-color: var(--primary); }
+        #bulk-actions { 
+            background: var(--warning); 
+            padding: 10px 20px; 
+            border-radius: 2px; 
+            display: none; 
+            align-items: center; 
+            justify-content: space-between; 
+            margin-bottom: 15px; 
+            color: #2c1e16; 
+            font-weight: bold;
+            border: 1px solid #8f6805;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+        .study-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; font-size: 0.9rem; color: var(--secondary); margin-bottom: 10px; font-weight: bold; }
+				
+		#toast-msg {
+			display: none;
+			position: fixed;
+			bottom: 30px;
+			left: 50%;
+			transform: translateX(-50%);
+			background: #332211; /* Medieval Brown */
+			color: #f4ecdf;
+			padding: 12px 24px;
+			border: 1px solid var(--primary);
+			border-radius: 4px;
+			z-index: 10000;
+			font-family: 'Cinzel', serif;
+			box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+			pointer-events: none; /* Allows clicking through it */
+			animation: toastFade 2.5s ease-in-out forwards;
+		}
+
+		@keyframes toastFade {
+			0% { opacity: 0; transform: translate(-50%, 10px); }
+			15% { opacity: 1; transform: translate(-50%, 0); }
+			85% { opacity: 1; transform: translate(-50%, 0); }
+			100% { opacity: 0; transform: translate(-50%, -10px); }
+		}
+    </style>
+</head>
+<body class="fonts-loading">
+<nav>
+    <div style="display:flex; align-items:center;">
+        <h2 class="gothic-text" onclick="app.goHome()" style="cursor:pointer; margin:0; font-size: 2rem; letter-spacing: 2px;">Tabula Scripta</h2>
+        <span id="sync-indicator">Web Mode</span>
+    </div>
+    <div class="nav-links">
+        <button onclick="app.showLibrary()">📜 Archivum</button>
+        <button onclick="app.createNewDrill()">⬜️ Tabula Rasa</button>
+        <button onclick="app.switchApp('Scriptorium.html')">🪶 Scriptorium</button>
+		<button onclick="app.showScoreboard()">🏛️ Atrium Honoris</button>
+        <button onclick="app.showSettings()">⚒️ Praecepta</button>
+    </div>
+</nav>
+
+<div class="container">
+
+	<div id="view-library" class="view active">
+		<div class="card">
+			<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
+				<div id="breadcrumbs" class="breadcrumb"><span>Archivum</span></div>
+				<div style="display:flex; gap:10px; flex-wrap: wrap; width: 100%; justify-content: space-between; align-items: center;">
+					<input type="text" id="library-search" placeholder="🔍 Search archives..." style="flex:1; min-width: 250px; max-width: 400px; padding: 10px;" oninput="app.renderLibrary()">
+					<div style="display:flex; gap:10px;">
+						<button class="btn-folder" onclick="app.createNewFolder()" style="background:var(--folder);">New Folder</button>
+						<button class="btn-main" onclick="document.getElementById('file-upload').click()" >Import Tabula</button>
+						<button onclick="app.exportData()" style="color:var(--text); border-color:var(--secondary);">Export Codex</button>
+						<button onclick="document.getElementById('mass-import-input').click()" style="color:var(--success); border-color:var(--success);">Import Codex</button>
+						<input type="file" id="mass-import-input" style="display:none" onchange="app.handleMassFile(this)">
+					</div>
+					<input type="file" id="file-upload" accept=".json" style="display:none" onchange="app.importData(this)">
+				</div>
+			</div>
+
+			<hr style="border:0; border-top:2px solid var(--parchment-border); margin:15px 0;">
+
+			<div id="bulk-actions" style="display: none; background: var(--warning); padding: 10px 20px; border-radius: 2px; align-items: center; justify-content: space-between; margin-bottom: 15px; color: #2c1e16; font-weight: bold; border: 1px solid #8f6805; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);">
+				<span id="bulk-count">0 items selected</span>
+				<div style="display:flex; gap:10px;">
+                    <button class="btn-white" onclick="app.bulkMove()">📂 Move</button>
+                    <button class="btn-danger" style="margin-left: 10px;" onclick="app.bulkDelete()">✕ Delete</button>
+				</div>
+			</div>
+
+			<div id="deck-grid" class="deck-grid"></div>
+
+			<div id="empty-state" style="grid-column: 1/-1; text-align:center; color:var(--secondary); padding:20px; font-style:italic;">No tables here. Create a new table or folder, or import a codex.</div>
+		</div>
+	</div>
+
+    <div id="view-editor" class="view">
+        <div class="card">
+            <div class="editor-header">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.9rem; font-weight: bold; color: var(--text-muted); font-family:'Cinzel', serif;">TABULA TITLE</label>
+                    <input type="text" id="edit-title" class="input-bare" style="font-size: 1.5rem; font-family: 'Cinzel', serif; border: none; border-bottom: 2px solid var(--border); background: transparent;" placeholder="e.g., First Conjugation (Present System)">
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="editor.save()">Save Tabula</button>
+					<button class="btn-folder" onclick="editor.saveAsCopy()">Save Copy...</button>
+					<button class="btn-mutebrown" onclick="editor.exportCurrent()">Export</button>
+                </div>
+            </div>
+            
+            <div id="editor-rows-container"></div>
+            
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                <button class="btn-secondary" onclick="editor.addSection()">+ Add Section Header</button>
+                <button class="btn-folder" style="background:var(--folder); color:#f4ecdf; flex: none;" onclick="editor.addRow()">+ Add Data Row</button>
+            </div>
+        </div>
+        <div class="card" style="background: #eadecd; border: 1px solid #cbbba1; padding: 15px;">
+            <p style="margin:0; font-size: 1rem; color: #5c4a3d;"><strong>Tip:</strong> Leave cells blank to create non-interactive cells (dashes) in the drill. This is useful for defective verbs or impossible forms.</p>
+        </div>
+    </div>
+
+    <div id="view-drill" class="view">
+        <div class="card">
+            <div class="drill-header">
+                <div class="drill-info">
+                    <h2 id="drill-title-display">---</h2>
+                    <div id="progress-bar" style="font-size: 1rem; font-weight: 600; color: var(--secondary); margin-top: 5px;">Progress: 0%</div>
+                </div>
+                <div class="timer" id="timer-display">00:00</div>
+            </div>
+            <div id="drill-table-container" class="table-wrapper"></div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button onclick="app.showLibrary()">Quit to Archivum</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-scoreboard" class="view">
+        <div class="card" style="max-width: 900px; margin: 0 auto;">
+            <h2 style="margin-top:0; color: var(--primary);">🏛️ Atrium Honoris</h2>
+            <hr style="border:0; border-top: 1px solid var(--parchment-border); margin-bottom: 20px;">
+            <div id="scoreboard-container"></div>
+        </div>
+    </div>
+
+    <div id="view-settings" class="view">
+        <div class="card" style="max-width: 800px; margin: 0 auto;">
+            <h2 style="margin-top:0; color: var(--primary);">Praecepta (Settings)</h2>
+            
+            <div class="settings-row">
+                <label>
+                    Play Sounds (SFX)
+                    <span class="settings-subtext">Play a victory chime upon completing a drill.</span>
+                </label>
+                <input type="checkbox" id="set-sfx" style="width:20px; height:20px; accent-color: var(--primary);">
+            </div>
+
+            <div class="settings-row">
+                <label>
+                    Lock Correct Cells
+                    <span class="settings-subtext">Prevent editing a cell once the correct answer is entered.</span>
+                </label>
+                <input type="checkbox" id="set-lock" style="width:20px; height:20px; accent-color: var(--primary);">
+            </div>
+
+            <div class="settings-row">
+                <label>
+                    Strict Accents
+                    <span class="settings-subtext">If enabled, macrons (ā, ē, etc.) must be typed exactly. If disabled, 'a' equals 'ā'.</span>
+                </label>
+                <input type="checkbox" id="set-accents" style="width:20px; height:20px; accent-color: var(--primary);">
+            </div>
+
+            <div class="settings-row">
+                <label>
+                    Timer Mode
+                    <span class="settings-subtext">Choose whether the timer acts as a stopwatch or a countdown.</span>
+                </label>
+                <select id="set-timermode" class="input-bare" style="width:150px;" onchange="document.getElementById('countdown-config').style.display = this.value === 'down' ? 'block' : 'none'">
+                    <option value="up">Count Up</option>
+                    <option value="down">Count Down</option>
+                </select>
+            </div>
+
+            <div id="countdown-config" class="settings-row" style="display:none; background: #eadecd; padding: 15px; border-radius: 2px; border: 1px solid var(--parchment-border);">
+                <label>
+                    Countdown Start Time (Seconds)
+                    <span class="settings-subtext">How much time do you get to finish the drill?</span>
+                </label>
+                <input type="number" id="set-timerstart" class="input-bare" style="width:100px;" min="10" value="60">
+            </div>
+
+            <button class="btn-main" style="width:100%; margin-top:20px;" onclick="app.saveSettings()">Save Configuration</button>
+
+			<hr style="border:0; border-top:2px solid var(--parchment-border); margin:25px 0;">
+			<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+				<h4 style="color: var(--danger); margin: 0; white-space: nowrap; font-family: 'Cinzel', serif;">
+					The Forbidden Arts
+				</h4>
+				<button class="btn-danger" 
+						style="margin: 0; width: auto; max-width: 200px; padding: 8px 20px; white-space: nowrap;" 
+						onclick="app.resetAllData()">
+					✕ Burn All Records
+				</button>
+        </div>
+    </div>
+
+</div>
+
+<audio id="snd-win" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
+
+<div id="win-modal">
+    <div class="modal">
+        <h2 class="win-title">Optime!</h2>
+        <div style="background: #eadecd; border: 1px solid var(--parchment-border); padding: 15px; border-radius: 2px; margin: 20px 0; text-align: center;">
+            <div style="font-size: 0.95rem; color: var(--secondary); font-weight: bold; font-family: 'Cinzel', serif;">Time Taken</div>
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary); font-family: 'EB Garamond', serif; font-variant-numeric: tabular-nums;" id="win-time">00:00</div>
+        </div>
+        <button class="btn-main" style="width: 100%;" onclick="app.closeModal()">Back to Archivum</button>
+    </div>
+</div>
+
+    <div id="move-modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <h3 id="move-modal-title" style="font-family:'Cinzel', serif; font-size:1.17rem; color:#000; margin: 0 0 10px 0;">Move Deck</h3>
+            <p style="font-size:1rem; color:var(--secondary); margin: 0 0 10px 0;">Select destination folder:</p>
+            <select id="move-folder-select" style="width:100%; padding:10px; margin-bottom:20px; font-size: 1.1rem; box-sizing: border-box; background:#fff; border:1px solid var(--primary); font-family: inherit;"></select>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-main" style="flex:1;" onclick="app.confirmMove()">Move</button>
+                <button style="flex:1;" style="background:#eadecd; color:var(--text); border-color:#a39276;" onclick="document.getElementById('move-modal-overlay').style.display='none'">Cancel</button>
+            </div>
+        </div>
+    </div>
+	
+	<div id="delete-modal-overlay" style="position: fixed; inset: 0; background: rgba(20, 10, 5, 0.75); display: none; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal" style="max-width: 600px; width: 90%; background: var(--card); padding: 25px; border-radius: 4px; border: 2px solid var(--primary); box-shadow: 0 10px 25px rgba(0,0,0,0.6), inset 0 0 30px rgba(139,69,19,0.08); position: relative; margin: auto;">
+            
+            <h3 id="delete-modal-title" style="font-family:'Cinzel', serif; font-size:1.17rem; color:#000; margin: 0 0 10px 0;">Delete Selected Items</h3>
+            <p id="delete-modal-msg" style="font-size:1rem; color:var(--secondary); margin: 0 0 20px 0;">Are you certain?</p>
+            
+            <div style="display:flex; gap:10px;">
+                <button class="btn-danger" style="flex:1;" onclick="app.confirmBulkDelete()">Delete</button>
+                <button style="flex:1; background:#eadecd; color:var(--text); border-color:#a39276;" onclick="document.getElementById('delete-modal-overlay').style.display='none'">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function generateId() { return Math.random().toString(36).substr(2, 9); }
+	function showToast(msg) {
+		let t = document.getElementById('toast-msg');
+		if (!t) return; // Safety check
+		
+		t.innerText = msg;
+		t.style.display = 'block';
+		
+		// This "reflow" trick ensures the fade-in animation restarts every time
+		t.style.animation = 'none';
+		t.offsetHeight; /* trigger reflow */
+		t.style.animation = null; 
+
+		setTimeout(() => {
+			t.style.display = 'none';
+		}, 2500);
+	}
+
+	const SysModal = {
+		show: function(type, message, defaultValue = '', title = "Ars Memoria") {
+			return new Promise((resolve) => {
+				const overlay = document.getElementById('sys-modal-overlay');
+				const msgEl = document.getElementById('sys-modal-msg');
+				const titleEl = document.getElementById('sys-modal-title');
+				const inputEl = document.getElementById('sys-modal-input');
+				const btnOk = document.getElementById('sys-btn-ok');
+				const btnCancel = document.getElementById('sys-btn-cancel');
+
+				// Set content
+				titleEl.innerText = title;
+				msgEl.innerText = message;
+				overlay.style.display = 'flex';
+
+				// Setup input
+				if (type === 'prompt') {
+					inputEl.style.display = 'block';
+					inputEl.value = defaultValue;
+					setTimeout(() => inputEl.focus(), 50); // Small delay to ensure it's visible
+				} else {
+					inputEl.style.display = 'none';
+				}
+
+				// --- THE FIX ---
+				// If it's an alert, hide the cancel button. Otherwise, show it as 'flex'.
+				btnCancel.style.display = (type === 'alert') ? 'none' : 'inline-block';
+				btnOk.style.display = 'inline-block';
+				
+				// Change 'OK' text to 'Understood' for alerts to make it clearer
+				btnOk.innerText = (type === 'alert') ? "Understood" : "Confirm";
+				
+				// Re-bind clicks
+				btnOk.onclick = () => {
+					const val = (type === 'prompt') ? inputEl.value : true;
+					this.close();
+					resolve(val);
+				};
+
+				btnCancel.onclick = () => {
+					this.close();
+					resolve(type === 'prompt' ? null : false);
+				};
+			});
+		},
+		close: function() {
+			document.getElementById('sys-modal-overlay').style.display = 'none';
+		},
+		alert: function(msg) { return this.show('alert', msg); },
+		confirm: function(msg) { return this.show('confirm', msg, '', "Are you certain?"); },
+		prompt: function(msg, def) { return this.show('prompt', msg, def, "Input Required"); }
+	};
+
+    const defaultSettings = {
+        sfx: true,
+        lockCorrect: true,
+        strictAccents: false,
+        timerMode: 'up', 
+        timerStart: 60,
+		autoTab: true
+    };
+
+	let isEditing = false;
+
+	window.addEventListener('beforeunload', (e) => {
+		if (window.isEditing) {
+			e.preventDefault();
+			e.returnValue = ''; 
+		}
+	});
+
+    const app = {
+        data: {}, 
+        folders: {}, 
+        explicitFolders: [], 
+        sortOrder: [],
+        settings: {},
+        currentFolder: "", 
+        itemToMove: null,
+
+        init: function() {
+            let oldDrills = JSON.parse(localStorage.getItem('latin_drills_v2') || '[]');
+            let loadedData = JSON.parse(localStorage.getItem('latin_drills_data') || '{}');
+            let loadedFolders = JSON.parse(localStorage.getItem('latin_folders') || '{}');
+            let loadedExplicit = JSON.parse(localStorage.getItem('latin_explicit_folders') || '[]');
+            let loadedSort = JSON.parse(localStorage.getItem('latin_sort_order') || '[]');
+            
+            let savedSettings = {};
+            try { savedSettings = JSON.parse(localStorage.getItem('tabula_settings')) || {}; } catch(e) {}
+            this.settings = { ...defaultSettings, ...savedSettings };
+
+            if (oldDrills.length > 0 && Object.keys(loadedData).length === 0) {
+                oldDrills.forEach(d => {
+                    let newId = generateId();
+                    loadedData[newId] = d;
+                    loadedSort.push(newId);
+                });
+                localStorage.removeItem('latin_drills_v2');
+                showToast("Data migrated to new folder system!");
+            }
+
+            this.data = loadedData;
+            this.folders = loadedFolders;
+            this.explicitFolders = loadedExplicit;
+            this.sortOrder = loadedSort;
+            
+            this.renderLibrary();
+        },
+
+		syncToDisk: async function() {
+            if (window.pywebview) {
+                document.getElementById('sync-indicator').innerText = "💾 Saving...";
+                if (window.triggerAutoBackups) window.triggerAutoBackups();
+                setTimeout(() => { document.getElementById('sync-indicator').innerText = "✅ Saved Locally"; }, 300);
+            }
+        },
+		
+		massImport: function(incomingJSON) {
+			try {
+				const imported = JSON.parse(incomingJSON);
+				let addedCount = 0;
+				let skippedCount = 0;
+
+				// 1. Merge the actual drill data
+				if (imported.data) {
+					for (const id in imported.data) {
+						if (!this.data[id]) {
+							this.data[id] = imported.data[id];
+							// Ensure they have a folder assignment; default to root if missing
+							this.folders[id] = imported.folders[id] || null;
+							addedCount++;
+						} else {
+							skippedCount++;
+						}
+					}
+				}
+
+				// 2. Merge Folder Definitions (The names/labels of the folders)
+				if (imported.explicitFolders) {
+					imported.explicitFolders.forEach(folder => {
+						if (!this.explicitFolders.find(f => f.id === folder.id)) {
+							this.explicitFolders.push(folder);
+						}
+					});
+				}
+
+				this.save();
+				showToast("📜 Library Expanded!");
+				this.renderLibrary();
+				
+				SysModal.alert(`Import Complete!\nAdded: ${addedCount} drills\nSkipped (Duplicates): ${skippedCount}`);
+			} catch (e) {
+				console.error(e);
+				SysModal.alert("Failed to parse the import file. Make sure it's a valid JSON codex.");
+			}
+		},
+		handleMassFile: function(input) {
+			const file = input.files[0];
+			if (!file) return;
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				this.massImport(e.target.result);
+				input.value = ''; // Reset for next time
+			};
+			reader.readAsText(file);
+		},
+		
+		// --- Add these three functions anywhere inside the app = { ... } object ---
+
+		updateBulkBar: function() {
+			const checked = document.querySelectorAll('.deck-checkbox:checked');
+			const bar = document.getElementById('bulk-actions');
+			const countLabel = document.getElementById('bulk-count');
+			
+			// Safety check in case the HTML element isn't in the DOM yet
+			if (!bar || !countLabel) return;
+
+			if (checked.length > 0) {
+				bar.style.display = 'flex';
+				countLabel.innerText = `${checked.length} item${checked.length > 1 ? 's' : ''} selected`;
+			} else {
+				bar.style.display = 'none';
+			}
+		},
+
+		clearSelection: function() {
+			document.querySelectorAll('.deck-checkbox').forEach(cb => cb.checked = false);
+			this.updateBulkBar();
+		},
+
+		bulkDelete: function() {
+			const checked = document.querySelectorAll('.deck-checkbox:checked');
+			const count = checked.length;
+			if (count === 0) return;
+
+			// Smart Pluralization
+			const label = count === 1 ? "table" : "tables";
+			document.getElementById('delete-modal-title').innerText = count === 1 ? "Delete Selected Table" : "Delete Selected Tables";
+			document.getElementById('delete-modal-msg').innerText = `Are you certain you wish to burn ${count} ${label}? Burnt tables shall be lost to the void forever.`;
+			
+			// Open the dedicated twin modal
+			document.getElementById('delete-modal-overlay').style.display = 'flex';
+		},
+
+		confirmBulkDelete: function() {
+			const checked = Array.from(document.querySelectorAll('.deck-checkbox:checked')).map(cb => cb.dataset.id);
+			
+			checked.forEach(id => {
+				if (this.data[id]) {
+					delete this.data[id];
+					delete this.folders[id];
+				} else {
+					// Logic for deleting a folder path
+					this.explicitFolders = this.explicitFolders.filter(f => f !== id && !f.startsWith(id + "/"));
+					Object.keys(this.data).forEach(drillId => {
+						if (this.folders[drillId] === id || this.folders[drillId]?.startsWith(id + "/")) {
+							delete this.data[drillId];
+							delete this.folders[drillId];
+						}
+					});
+				}
+				this.sortOrder = this.sortOrder.filter(itemId => itemId !== id);
+			});
+			
+			this.save();
+			this.renderLibrary();
+			document.getElementById('delete-modal-overlay').style.display = 'none';
+			showToast(`Tables Burnt!`);
+		},
+
+		bulkMove: function() {
+			// 1. Grab all checked items
+			const checked = document.querySelectorAll('.deck-checkbox:checked');
+			if (checked.length === 0) return;
+
+			// 2. Open the modal with 'null' as the ID to trigger "Move Selected Decks" title
+			this.openMoveModal(null);
+		},
+
+        save: function() {
+            localStorage.setItem('latin_drills_data', JSON.stringify(this.data));
+            localStorage.setItem('latin_folders', JSON.stringify(this.folders));
+            localStorage.setItem('latin_explicit_folders', JSON.stringify(this.explicitFolders));
+            localStorage.setItem('latin_sort_order', JSON.stringify(this.sortOrder));
+            this.syncToDisk();
+			/*showToast("Changes Saved Successfully");*/
+        },
+
+        goHome: function() {
+            this.currentFolder = ""; 
+            this.showLibrary();
+        },
+
+        showLibrary: function() {
+            this.switchView('view-library');
+            document.getElementById('win-modal').style.display = 'none';
+            drill.stop();
+            this.renderLibrary();
+        },
+
+        showSettings: function() {
+            document.getElementById('set-sfx').checked = this.settings.sfx;
+            document.getElementById('set-lock').checked = this.settings.lockCorrect;
+            document.getElementById('set-accents').checked = this.settings.strictAccents;
+            document.getElementById('set-timermode').value = this.settings.timerMode;
+            document.getElementById('set-timerstart').value = this.settings.timerStart;
+            
+            document.getElementById('countdown-config').style.display = this.settings.timerMode === 'down' ? 'block' : 'none';
+            this.switchView('view-settings');
+        },
+
+		// Add a variable at the top of your app object or script to track current sort
+		// app.currentSort = { key: 'secPerCell', ascending: true };
+
+		showScoreboard: function(sortKey = 'secPerCell') {
+			const container = document.getElementById('scoreboard-container');
+			const statsArray = [];
+
+			// Toggle logic for ascending/descending
+			if (this.lastSortKey === sortKey) {
+				this.sortAscending = !this.sortAscending;
+			} else {
+				this.sortAscending = true;
+				this.lastSortKey = sortKey;
+			}
+
+			Object.keys(this.data).forEach(id => {
+				const d = this.data[id];
+				if (d.stats && d.stats.completed > 0) {
+					let cellCount = 0;
+					d.content.forEach(row => {
+						if (row.type === 'row') {
+							row.answers.forEach(ans => { if (ans && ans.trim() !== "") cellCount++; });
+						}
+					});
+
+					const safeCells = cellCount || 1;
+					const bestTime = d.stats.bestTime !== null ? d.stats.bestTime : 0;
+					const efficiency = (bestTime / safeCells).toFixed(2);
+
+					statsArray.push({
+						title: d.title || "Untitled Tabula",
+						cells: cellCount,
+						bestTime: bestTime,
+						secPerCell: parseFloat(efficiency)
+					});
+				}
+			});
+
+			if (statsArray.length === 0) {
+				container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--secondary); font-style:italic;">
+					<p>The Hall of Honor is empty. Complete a Tabula to see your name etched in stone.</p>
+				</div>`;
+				this.switchView('view-scoreboard');
+				return;
+			}
+
+			// Advanced Sorting Logic
+			statsArray.sort((a, b) => {
+				let valA = a[sortKey];
+				let valB = b[sortKey];
+				
+				if (typeof valA === 'string') {
+					return this.sortAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+				}
+				return this.sortAscending ? valA - valB : valB - valA;
+			});
+
+			const maxSecPerCell = Math.max(...statsArray.map(s => s.secPerCell)) || 1;
+			const sortIcon = this.sortAscending ? " ▲" : " ▼";
+
+			let html = `
+				<table class="score-table">
+					<tr>
+						<th onclick="app.showScoreboard('title')" style="cursor:pointer;">Tabula${sortKey==='title'?sortIcon:''}</th>
+						<th onclick="app.showScoreboard('cells')" style="width:100px; text-align:center; cursor:pointer;">Cells${sortKey==='cells'?sortIcon:''}</th>
+						<th onclick="app.showScoreboard('bestTime')" style="width:120px; text-align:center; cursor:pointer;">Best Time${sortKey==='bestTime'?sortIcon:''}</th>
+						<th onclick="app.showScoreboard('secPerCell')" style="width:150px; text-align:right; cursor:pointer;">Sec / Cell${sortKey==='secPerCell'?sortIcon:''}</th>
+					</tr>
+			`;
+
+			statsArray.forEach(s => {
+				let pct = Math.max(5, (s.secPerCell / maxSecPerCell) * 100);
+				html += `
+					<tr>
+						<td>
+							<strong>${s.title}</strong>
+							<div class="score-bar-container"><div class="score-bar" style="width: ${pct}%"></div></div>
+						</td>
+						<td style="text-align:center;">${s.cells}</td>
+						<td style="text-align:center; font-weight:bold;">${this.formatTime(s.bestTime)}</td>
+						<td style="text-align:right; color:var(--primary); font-weight:bold;">${s.secPerCell}s</td>
+					</tr>
+				`;
+			});
+
+			html += `</table>`;
+			container.innerHTML = html;
+			this.switchView('view-scoreboard');
+		},
+		saveSettings: function() {
+			this.settings.sfx = document.getElementById('set-sfx').checked;
+			this.settings.lockCorrect = document.getElementById('set-lock').checked;
+			this.settings.strictAccents = document.getElementById('set-accents').checked;
+			this.settings.timerMode = document.getElementById('set-timermode').value;
+			this.settings.timerStart = parseInt(document.getElementById('set-timerstart').value) || 60;
+			
+			localStorage.setItem('tabula_settings', JSON.stringify(this.settings));
+			
+			this.showLibrary(); // Go back first
+			showToast("Configurations Saved"); // Then show the toast on the library screen
+		},
+
+        resetAllData: async function() {
+            if (await SysModal.confirm("Are you absolutely certain? This will wipe ALL tables, folders, and history permanently. This cannot be undone.")) {
+                if (await SysModal.prompt("Type 'DELETE' to confirm:") === 'DELETE') {
+                    localStorage.removeItem('latin_drills_data');
+                    localStorage.removeItem('latin_folders');
+                    localStorage.removeItem('latin_explicit_folders');
+                    localStorage.removeItem('latin_sort_order');
+                    localStorage.removeItem('tabula_settings');
+                    
+                    this.data = {};
+                    this.folders = {};
+                    this.explicitFolders = [];
+                    this.sortOrder = [];
+                    this.settings = { ...defaultSettings };
+                    
+                    showToast("All records burnt.");
+                    this.goHome();
+                } else {
+                    showToast("The records remain safe.");
+                }
+            }
+        },
+
+		switchView: async function(id) {
+			// 1. If we are leaving the editor and changes were made...
+			if (window.isEditing && window.isDirty && id !== 'view-editor') {
+				const leave = await SysModal.confirm("You have unsaved changes. Return to the Archivum and lose your work?");
+				if (!leave) return; // Stop! Don't switch the view.
+			}
+
+			// 2. Clear flags when moving to a new non-editor view
+			if (id !== 'view-editor') {
+				window.isEditing = false;
+				window.isDirty = false;
+			}
+
+			// 3. Do the actual visual switch
+			document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+			document.getElementById(id).classList.add('active');
+			window.scrollTo(0, 0);
+		},
+		
+		switchApp: async function(targetUrl) {
+			// 1. Check the flags (Mirroring your switchView logic)
+			if (window.isEditing && window.isDirty) {
+				const leave = await SysModal.confirm("You have unsaved changes. Go to Scriptorium and lose your work?");
+				if (!leave) return; // Stop!
+			}
+
+			// 2. Kill the browser's native "ugly" prompt right before leaving
+			window.onbeforeunload = null;
+			window.isEditing = false;
+			window.isDirty = false;
+
+			// 3. Teleport to the other program
+			window.location.href = targetUrl;
+		},
+
+        renderBreadcrumbs: function() {
+            const crumbs = document.getElementById('breadcrumbs');
+            let html = `<span class="crumb-link" onclick="app.currentFolder=''; app.renderLibrary()" 
+                          ondragover="app.handleBreadcrumbDragOver(event)" ondragleave="app.handleBreadcrumbLeave(event)" 
+                          ondrop="app.handleBreadcrumbDrop(event, '')">Archivum</span>`;
+            if (this.currentFolder) {
+                let parts = this.currentFolder.split('/'); 
+                let buildPath = "";
+                parts.forEach((p, i) => {
+                    buildPath += (i === 0 ? p : "/" + p);
+                    html += `<span class="crumb-separator">/</span>`;
+                    if (i === parts.length - 1) html += `<span class="crumb-active">${p}</span>`;
+                    else html += `<span class="crumb-link" onclick="app.currentFolder='${buildPath}'; app.renderLibrary()" 
+                                 ondragover="app.handleBreadcrumbDragOver(event)" ondragleave="app.handleBreadcrumbLeave(event)" 
+                                 ondrop="app.handleBreadcrumbDrop(event, '${buildPath}')">${p}</span>`;
+                });
+            }
+            crumbs.innerHTML = html;
+        },
+
+        renderLibrary: function() {
+			const container = document.getElementById('deck-grid');
+			container.innerHTML = '';
+			this.renderBreadcrumbs();
+			
+			// Always check if the bulk bar should be visible based on current selections
+			this.updateBulkBar();
+			
+			let itemsInView = []; 
+			let foldersInView = new Set();
+			const currentPrefix = this.currentFolder ? this.currentFolder + "/" : "";
+			const searchQuery = document.getElementById('library-search').value.toLowerCase();
+
+			if (searchQuery) {
+				Object.keys(this.data).forEach(id => { 
+					if (this.data[id].title.toLowerCase().includes(searchQuery)) itemsInView.push(id); 
+				});
+			} else {
+				const processPath = (folderPath) => {
+					if (folderPath.startsWith(currentPrefix) && folderPath !== "" && folderPath !== this.currentFolder) {
+						let remainder = folderPath.substring(currentPrefix.length); 
+						let nextSlash = remainder.indexOf("/");
+						let subFolder = nextSlash === -1 ? remainder : remainder.substring(0, nextSlash);
+						foldersInView.add(currentPrefix + subFolder);
+					}
+				};
+				Object.keys(this.data).forEach(id => {
+					const folderPath = this.folders[id] || "";
+					if (folderPath === this.currentFolder) itemsInView.push(id);
+					processPath(folderPath);
+				});
+				this.explicitFolders.forEach(folderPath => { processPath(folderPath); });
+			}
+
+			let viewItems = [...Array.from(foldersInView), ...itemsInView];
+			
+			let dirtyOrder = false;
+			viewItems.forEach(id => {
+				if (!this.sortOrder.includes(id)) {
+					this.sortOrder.push(id);
+					dirtyOrder = true;
+				}
+			});
+			if(dirtyOrder) this.save();
+
+			viewItems.sort((a, b) => this.sortOrder.indexOf(a) - this.sortOrder.indexOf(b));
+
+			if (viewItems.length === 0) {
+				document.getElementById('empty-state').style.display = 'block';
+				return;
+			}
+			document.getElementById('empty-state').style.display = 'none';
+
+			viewItems.forEach(fullPath => {
+				const isDrill = !!this.data[fullPath]; 
+				
+				if (!isDrill) {
+					let displayName = fullPath.split('/').pop();
+					container.innerHTML += `
+					<div class="card folder-card" draggable="true" 
+						 ondragstart="app.dragStart(event, '${fullPath}')" ondragend="app.dragEnd(event)"
+						 onclick="app.currentFolder='${fullPath}'; app.renderLibrary()" 
+						 ondragover="app.handleDragOver(event, '${fullPath}', true)" ondragleave="this.classList.remove('drag-nest', 'insert-before', 'insert-after')" ondrop="app.handleDrop(event, '${fullPath}')">
+						
+						<div style="position:absolute; top:8px; right:8px; display:flex; gap:8px;">
+							<button onclick="event.stopPropagation(); app.renameFolder('${fullPath}')" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; box-shadow:none;" title="Rename Folder">📝</button>
+							<button onclick="event.stopPropagation(); app.moveFolder('${fullPath}')" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; box-shadow:none;" title="Move Folder">📂</button>
+							<button onclick="event.stopPropagation(); app.deleteFolder('${fullPath}')" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding:0; color:var(--danger); box-shadow:none;" title="Delete Folder">✕</button>
+						</div>
+						<div class="folder-icon">📁</div><h3 style="margin:0">${displayName}</h3>
+					</div>`;
+				} else {
+					const id = fullPath;
+					const d = this.data[id];
+					const bestTime = d.stats.bestTime ? this.formatTime(d.stats.bestTime) : '--:--';
+					const locationTag = (searchQuery && this.folders[id]) ? `<div style="font-size:0.85rem; color:var(--folder); margin-top:4px;">📁 ${this.folders[id]}</div>` : "";
+
+					container.innerHTML += `
+						<div class="card" draggable="true" ondragstart="app.dragStart(event, '${id}')" ondragend="app.dragEnd(event)" 
+							 ondragover="app.handleDragOver(event, '${id}', false)" ondragleave="this.classList.remove('drag-nest', 'insert-before', 'insert-after')" ondrop="app.handleDrop(event, '${id}')"
+							 style="position: relative;"> <div class="deck-header">
+								<div class="deck-title-area">
+									<h3 class="deck-title-text" title="${d.title}" style="padding-right: 25px;"> <span style="display:flex; align-items:center; gap:10px;">
+											<input type="checkbox" class="deck-checkbox" data-id="${id}" onclick="event.stopPropagation(); app.updateBulkBar()" style="margin:0; width:18px; height:18px;">
+											<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+												${d.title}
+											</span>
+										</span>
+									</h3>
+									${locationTag}
+								</div>
+							</div>
+
+							<button onclick="event.stopPropagation(); app.renameDrill('${id}')" 
+									style="position: absolute; top: 15px; right: 15px; background:none; border:none; box-shadow:none; color:var(--secondary); cursor:pointer; font-size:1rem; opacity: 1; padding: 5px; z-index: 10;"
+									title="Rename Table">
+								📝
+							</button>
+
+							<div style="font-size:0.9rem; color:var(--secondary); margin: 4px 0;">Completed: ${d.stats.completed}</div>
+							<div style="font-size:1rem; font-weight:bold; color:var(--secondary)">Best Time: ${bestTime}</div>
+							<div style="margin-top:15px;">
+								<button class="btn-main" style="width:100%; margin-bottom: 8px;" onclick="app.playDrill('${id}')">Inscribe</button>
+								<div style="display:flex; gap:5px; flex-wrap:wrap; justify-content: space-between;">
+									<div style="display:flex; gap:5px;">
+										<button onclick="app.editDrill('${id}')">✎ Edit</button>
+										<button onclick="app.openMoveModal('${id}')" title="Move Tabula">📂 Move</button>
+										<button onclick="app.exportSingleDrill('${id}')" title="Export Tabula">⬇️</button>
+									</div>
+									<button onclick="app.deleteDrill('${id}')" style="color:var(--danger)" title="Delete">✕</button>
+								</div>
+							</div>
+						</div>`;
+				}
+			});
+		},
+		updateBulkBar: function() {
+            const checked = document.querySelectorAll('.deck-checkbox:checked');
+            const bar = document.getElementById('bulk-actions');
+            const countLabel = document.getElementById('bulk-count');
+            if (!bar || !countLabel) return;
+            if (checked.length > 0) {
+                bar.style.display = 'flex';
+                countLabel.innerText = `${checked.length} table${checked.length > 1 ? 's' : ''} selected`;
+            } else {
+                bar.style.display = 'none';
+            }
+        },
+
+        clearSelection: function() {
+            document.querySelectorAll('.deck-checkbox').forEach(cb => cb.checked = false);
+            this.updateBulkBar();
+        },
+
+        /* bulkDelete: async function() {
+            const checked = Array.from(document.querySelectorAll('.deck-checkbox:checked')).map(cb => cb.dataset.id);
+            if (checked.length === 0) return;
+            if (await SysModal.confirm(`Permanently delete these ${checked.length} selected tables?`)) {
+                checked.forEach(id => {
+                    delete this.data[id];
+                    delete this.folders[id];
+                    this.sortOrder = this.sortOrder.filter(itemId => itemId !== id);
+                });
+                this.save();
+                this.renderLibrary();
+                showToast("Tables purged.");
+            }
+        },*/
+
+        
+        createNewFolder: async function() {
+            let name = await SysModal.prompt("New Folder Name?");
+            if (!name) return;
+            name = name.trim().replace(/\//g, ''); 
+            if (!name) return;
+            let newPath = this.currentFolder ? this.currentFolder + "/" + name : name;
+            if (!this.explicitFolders.includes(newPath)) { 
+                this.explicitFolders.push(newPath); 
+                this.save(); 
+                this.renderLibrary(); 
+            }
+        },
+
+        renameFolder: async function(oldPath) {
+            const oldName = oldPath.split('/').pop(); 
+            const parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
+            let newName = await SysModal.prompt("Rename folder to:", oldName);
+            if (!newName || newName === oldName) return;
+            newName = newName.trim().replace(/\//g, '');
+            let newPath = parentPath ? parentPath + "/" + newName : newName;
+            
+            Object.keys(this.folders).forEach(id => {
+                if (this.folders[id] === oldPath) this.folders[id] = newPath;
+                else if (this.folders[id].startsWith(oldPath + "/")) { 
+                    this.folders[id] = newPath + this.folders[id].substring(oldPath.length); 
+                }
+            });
+            
+            this.explicitFolders = this.explicitFolders.map(f => {
+                if (f === oldPath) return newPath;
+                if (f.startsWith(oldPath + "/")) return newPath + f.substring(oldPath.length);
+                return f;
+            });
+            this.save(); this.renderLibrary();
+        },
+
+        moveFolder: async function(oldPath) {
+            const folderName = oldPath.split('/').pop();
+            let target = await SysModal.prompt(`Move '${folderName}' to which folder path?\n(Leave empty to move to root)`, "");
+            if (target === null) return;
+            let cleanTarget = target.trim().replace(/^\/|\/$/g, '');
+            let newPath = cleanTarget ? cleanTarget + "/" + folderName : folderName;
+            if (newPath === oldPath || oldPath.startsWith(newPath + "/")) return SysModal.alert("Invalid move destination.");
+            this.moveFolderTo(oldPath, cleanTarget);
+        },
+
+        deleteFolder: async function(path) {
+            let itemsInside = Object.keys(this.folders).filter(id => this.folders[id] === path || this.folders[id].startsWith(path + "/"));
+            let msg = itemsInside.length > 0 ? `WARNING: This folder contains ${itemsInside.length} drill(s).\nDeleting it will permanently delete them!\nProceed?` : `Delete this empty folder?`;
+            
+            if (await SysModal.confirm(msg)) {
+                itemsInside.forEach(id => { delete this.data[id]; delete this.folders[id]; });
+                this.explicitFolders = this.explicitFolders.filter(f => f !== path && !f.startsWith(path + "/"));
+                this.save(); this.renderLibrary();
+            }
+        },
+
+        openMoveModal: function(id) {
+            this.itemToMove = id;
+            document.getElementById('move-modal-title').innerText = "Move Drill";
+            const sel = document.getElementById('move-folder-select');
+            let options = `<option value="">[ Root Archivum ]</option>`;
+            let allFolders = new Set(this.explicitFolders);
+            Object.values(this.folders).forEach(f => { if(f) allFolders.add(f); });
+            Array.from(allFolders).sort().forEach(f => {
+                let selected = (this.folders[id] === f) ? "selected" : "";
+                options += `<option value="${f}" ${selected}>📂 ${f}</option>`;
+            });
+            sel.innerHTML = options;
+            document.getElementById('move-modal-overlay').style.display = 'flex';
+        },
+
+		confirmMove: function() {
+			const target = document.getElementById('move-folder-select').value;
+			const checked = Array.from(document.querySelectorAll('.deck-checkbox:checked'));
+			
+			// 1. Handle Individual Move (the one you clicked "Move" on)
+			if (this.itemToMove) {
+				if (target === "") delete this.folders[this.itemToMove]; 
+				else this.folders[this.itemToMove] = target;
+				showToast("Table Relocated");
+			} 
+			// 2. Handle Bulk Move (only if no individual item was targeted)
+			else if (checked.length > 0) {
+				checked.forEach(cb => {
+					const id = cb.dataset.id;
+					if (target === "") delete this.folders[id]; 
+					else this.folders[id] = target;
+				});
+				showToast("Tables Relocated");
+			} 
+
+			this.save();
+			this.renderLibrary();
+			document.getElementById('move-modal-overlay').style.display = 'none';
+			this.itemToMove = null; // Clear state
+		},
+
+        dragStart: function(e, id) { 
+            e.dataTransfer.setData('text/plain', id); 
+            e.dataTransfer.effectAllowed = 'move';
+            e.target.classList.add('drag-sort-active');
+        },
+        dragEnd: function(e) {
+            e.target.classList.remove('drag-sort-active');
+            document.querySelectorAll('.drag-nest').forEach(el => el.classList.remove('drag-nest'));
+            document.querySelectorAll('.insert-before').forEach(el => el.classList.remove('insert-before'));
+            document.querySelectorAll('.insert-after').forEach(el => el.classList.remove('insert-after'));
+        },
+        handleDragOver: function(e, targetId, isFolder) {
+            e.preventDefault(); 
+            const rect = e.currentTarget.getBoundingClientRect();
+            const offsetX = e.clientX - rect.left;
+            const width = rect.width;
+            e.currentTarget.classList.remove('drag-nest', 'insert-before', 'insert-after');
+            
+            if (isFolder && offsetX > width * 0.25 && offsetX < width * 0.75) {
+                e.currentTarget.classList.add('drag-nest');
+                e.dataTransfer.dropEffect = 'move'; 
+            } else if (offsetX < width / 2) {
+                e.currentTarget.classList.add('insert-before');
+                e.dataTransfer.dropEffect = 'move'; 
+            } else {
+                e.currentTarget.classList.add('insert-after');
+                e.dataTransfer.dropEffect = 'move'; 
+            }
+        },
+        handleDrop: async function(e, targetId) {
+            e.preventDefault(); e.stopPropagation();
+            const sourceId = e.dataTransfer.getData('text/plain');
+            if (!sourceId || sourceId === targetId) return;
+
+            const el = e.currentTarget;
+            const isNest = el.classList.contains('drag-nest');
+            const isBefore = el.classList.contains('insert-before');
+            const isAfter = el.classList.contains('insert-after');
+            el.classList.remove('drag-nest', 'insert-before', 'insert-after');
+
+            if (isNest) {
+                if (this.data[sourceId]) {
+                     if (targetId === "") delete this.folders[sourceId]; 
+                     else this.folders[sourceId] = targetId;
+                     this.save(); this.renderLibrary();
+                } else {
+                     this.moveFolderTo(sourceId, targetId);
+                }
+                return;
+            }
+
+            let newOrder = [...this.sortOrder];
+            const srcIdx = newOrder.indexOf(sourceId);
+            if (srcIdx > -1) newOrder.splice(srcIdx, 1);
+            
+            let tgtIdx = newOrder.indexOf(targetId);
+            if (tgtIdx === -1) {
+                newOrder.push(sourceId);
+            } else {
+                if (isAfter) tgtIdx++;
+                newOrder.splice(tgtIdx, 0, sourceId);
+            }
+            
+            this.sortOrder = newOrder;
+            this.save(); this.renderLibrary();
+        },
+        handleBreadcrumbDragOver: function(e) {
+            e.preventDefault(); e.currentTarget.classList.add('drag-nest'); 
+        },
+        handleBreadcrumbLeave: function(e) { e.currentTarget.classList.remove('drag-nest'); },
+        handleBreadcrumbDrop: async function(e, targetPath) {
+            e.preventDefault(); e.stopPropagation();
+            e.currentTarget.classList.remove('drag-nest');
+            const sourceId = e.dataTransfer.getData('text/plain');
+            if (!sourceId) return;
+
+            if (this.data[sourceId]) {
+                if (targetPath === "") delete this.folders[sourceId];
+                else this.folders[sourceId] = targetPath;
+                this.save(); this.renderLibrary();
+            } else {
+                await this.moveFolderTo(sourceId, targetPath);
+            }
+        },
+        moveFolderTo: async function(srcPath, destPath) {
+            const folderName = srcPath.split('/').pop();
+            if(destPath === srcPath || destPath.startsWith(srcPath + "/")) return; 
+            
+            let newPath = destPath ? destPath + "/" + folderName : folderName;
+            
+            Object.keys(this.folders).forEach(id => {
+                if (this.folders[id] === srcPath) this.folders[id] = newPath;
+                else if (this.folders[id].startsWith(srcPath + "/")) { 
+                    this.folders[id] = newPath + this.folders[id].substring(srcPath.length); 
+                }
+            });
+            
+            this.explicitFolders = this.explicitFolders.map(f => {
+                if (f === srcPath) return newPath;
+                if (f.startsWith(srcPath + "/")) return newPath + f.substring(srcPath.length);
+                return f;
+            });
+            this.save(); this.renderLibrary();
+        },
+
+		editDrill: function(id) {
+			editor.load(this.data[id], id);
+			this.switchView('view-editor');
+			window.isEditing = true;
+			window.isDirty = false; // Start clean
+		},
+
+		createNewDrill: function() {
+			editor.load({ title: "", columns: ['1sg', '2sg', '3sg', '1pl', '2pl', '3pl'], content: [] }, null); 
+			this.switchView('view-editor');
+			window.isEditing = true;
+			window.isDirty = false; // Start clean
+		},
+        playDrill: function(id) {
+            drill.load(this.data[id], id);
+            this.switchView('view-drill');
+        },
+        deleteDrill: async function(id) {
+            if(await SysModal.confirm("Delete this tabula permanently?")) {
+                delete this.data[id];
+                delete this.folders[id];
+                this.save();
+                this.renderLibrary();
+            }
+        },
+
+		exportSingleDrill: async function(id) { // Added 'async'
+            const drillData = this.data[id];
+            if (!drillData) return;
+            
+            const payload = { 
+                data: { [id]: drillData }, 
+                folders: {}, 
+                explicitFolders: [], 
+                sortOrder: [id] 
+            };
+            
+            const jsonString = JSON.stringify(payload, null, 2);
+            const safeName = drillData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const fileName = `tabula_${safeName}.json`;
+
+            // --- THE NEW LOGIC STARTS HERE ---
+            if (window.pywebview && window.pywebview.api) {
+                // DESKTOP: Use your working Python Bridge
+                try {
+                    const result = await window.pywebview.api.export_individual_item(fileName, jsonString);
+                    if (result === "SUCCESS") {
+                        showToast("Table Exported to Disk");
+                    }
+                } catch (err) {
+                    console.error("Export failed", err);
+                }
+            } else {
+                // WEB: Stick to the original 'fake link' download
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", fileName);
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                showToast("Table Downloaded");
+            }
+        },
+		
+		renameDrill: async function(id) {
+			const oldName = this.data[id].title || id;
+			const newName = await SysModal.prompt("Rename Table:", oldName);
+			
+			if (newName && newName.trim() !== "" && newName !== oldName) {
+				// 1. Update the title inside the data object
+				this.data[id].title = newName.trim();
+				
+				// 2. Save the change to LocalStorage
+				this.save();
+				
+				// 3. Refresh the library view to show the new name
+				this.renderLibrary();
+				
+				showToast("Table Renamed");
+			}
+		},
+
+        exportData: function() {
+            const payload = { 
+                data: this.data, folders: this.folders, 
+                explicitFolders: this.explicitFolders, sortOrder: this.sortOrder 
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "tabula_scripta_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+			showToast("Full Library Exported");
+        },
+        
+        importData: function(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if (json.data && typeof json.data === 'object') {
+                        // Merge logic instead of overwrite
+                        Object.keys(json.data).forEach(k => {
+                            if (!this.data[k]) {
+                                this.data[k] = json.data[k];
+                                this.sortOrder.push(k);
+                            }
+                        });
+                        if (json.folders) {
+                            Object.keys(json.folders).forEach(k => {
+                                if (json.folders[k]) this.folders[k] = json.folders[k];
+                            });
+                        }
+                        this.save(); this.renderLibrary(); showToast("Import successful!");
+                    } else if (Array.isArray(json)) {
+                        json.forEach(d => {
+                            let id = generateId();
+                            this.data[id] = d;
+                            this.sortOrder.push(id);
+                        });
+                        this.save(); this.renderLibrary(); showToast("Imported legacy format!");
+                    }
+                } catch(err) { SysModal.alert("Invalid JSON file."); }
+                input.value = ""; 
+            };
+            reader.readAsText(file);
+        },
+        formatTime: function(seconds) {
+            if (seconds < 0) seconds = 0;
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        },
+        closeModal: function() {
+            document.getElementById('win-modal').style.display = 'none';
+            this.showLibrary();
+        }
+    };
+
+    window.addEventListener('pywebviewready', () => {
+        document.getElementById('sync-indicator').innerText = "✅ Desktop Active";
+    });
+
+	const editor = {
+		currentId: null,
+		data: null,
+
+		load: function(drillData, id) {
+			this.currentId = id;
+			this.data = JSON.parse(JSON.stringify(drillData));
+			
+			// Safety check: Ensure columns exist so the editor doesn't crash
+			if (!this.data.columns) {
+				this.data.columns = ['1sg', '2sg', '3sg', '1pl', '2pl', '3pl'];
+			}
+
+			// Normalize: Ensure 'header' types from older data are treated as 'section'
+			this.data.content.forEach(item => {
+				if (item.type === 'header') {
+					item.type = 'section';
+					item.label = item.label || item.text; // Move text to label if needed
+				}
+			});
+
+			document.getElementById('edit-title').value = this.data.title;
+			this.renderRows();
+			
+			// The only new addition:
+			this.attachChangeTracker();
+		},
+		
+		attachChangeTracker: function() {
+			const editorEl = document.getElementById('view-editor');
+			// Remove old listener if it exists to avoid stacking
+			editorEl.onclick = null;
+			editorEl.oninput = null;
+
+			// If they type anything...
+			editorEl.oninput = () => { window.isDirty = true; };
+			
+			// If they click any button (Add Row, Delete Row, Move Up)...
+			editorEl.onclick = (e) => {
+				if (e.target.tagName === 'BUTTON' && !e.target.innerText.includes('Save')) {
+					window.isDirty = true;
+				}
+			};
+		},
+
+		renderRows: function() {
+			const container = document.getElementById('editor-rows-container');
+			container.innerHTML = '';
+			
+			// Column Configuration Row
+			const colConfigDiv = document.createElement('div');
+			colConfigDiv.className = 'editor-row';
+			// This line fixes the "Columns are rows" issue:
+			colConfigDiv.style.gridTemplateColumns = `150px repeat(${this.data.columns.length}, 1fr) 100px`;
+			
+			colConfigDiv.style.background = '#eadecd';
+			colConfigDiv.style.borderRadius = '2px';
+			colConfigDiv.style.border = '1px solid #cbbba1';
+			
+			let colHtml = `<div style="font-weight:bold; color:var(--secondary); font-size:0.9rem; text-transform:none; font-family:'Cinzel', serif;">Column Config</div>`;
+			this.data.columns.forEach((col, i) => {
+				colHtml += `
+					<div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+						<div style="display:flex; gap:2px;">
+							<button class="btn-sm" style="padding:1px 4px; font-size:0.7rem;" onclick="editor.moveColumn(${i}, -1)" ${i === 0 ? 'disabled' : ''}>◀</button>
+							<button class="btn-sm" style="padding:1px 4px; font-size:0.7rem;" onclick="editor.moveColumn(${i}, 1)" ${i === this.data.columns.length-1 ? 'disabled' : ''}>▶</button>
+						</div>
+						<input type="text" value="${col}" class="input-bare" style="font-weight:bold; text-align:center;" onchange="editor.updateColumn(${i}, this.value)" placeholder="Col ${i+1}">
+					</div>`;
+			});
+
+			colHtml += `
+				<div class="action-btns">
+						<button class="btn-sm" title="Add Column" onclick="editor.addColumn()">+</button>
+						<button class="btn-danger btn-sm" title="Remove Last Column" onclick="editor.removeColumn()">-</button>
+				</div>
+			`;
+			colConfigDiv.innerHTML = colHtml;
+			container.appendChild(colConfigDiv);
+
+			// Data Rows
+			this.data.content.forEach((item, idx) => {
+				const div = document.createElement('div');
+				div.className = 'editor-row';
+				div.style.gridTemplateColumns = `150px repeat(${this.data.columns.length}, 1fr) 100px`;
+
+				if (item.type === 'section') {
+					div.innerHTML = `
+						<div style="grid-column: 1 / -2;">
+							<input type="text" value="${item.label}" class="input-bare" style="font-weight:bold; color:var(--primary); background:#eadecd;" onchange="editor.updateItem(${idx}, 'label', this.value)" placeholder="SECTION HEADER">
+						</div>
+						<div class="action-btns">
+							<button class="btn-sm" onclick="editor.moveItem(${idx}, -1)">▲</button>
+							<button class="btn-sm" onclick="editor.moveItem(${idx}, 1)">▼</button>
+							<button class="btn-danger btn-sm" onclick="editor.removeItem(${idx})">✕</button>
+						</div>
+					`;
+				} else {
+					let html = `<input type="text" value="${item.label}" class="input-bare" onchange="editor.updateItem(${idx}, 'label', this.value)" placeholder="Label (e.g. amo)">`;
+					this.data.columns.forEach((_, cIdx) => {
+						html += `<input type="text" value="${item.answers[cIdx] || ''}" class="input-bare" onchange="editor.updateAnswer(${idx}, ${cIdx}, this.value)" placeholder="...">`;
+					});
+					html += `
+						<div class="action-btns">
+							<button class="btn-sm" onclick="editor.moveItem(${idx}, -1)">▲</button>
+							<button class="btn-sm" onclick="editor.moveItem(${idx}, 1)">▼</button>
+							<button class="btn-danger btn-sm" onclick="editor.removeItem(${idx})">✕</button>
+						</div>
+					`;
+					div.innerHTML = html;
+				}
+				container.appendChild(div);
+			});
+		},
+
+		updateColumn: function(idx, val) { this.data.columns[idx] = val; },
+		updateItem: function(idx, key, val) { this.data.content[idx][key] = val; },
+		updateAnswer: function(rowIdx, ansIdx, val) { this.data.content[rowIdx].answers[ansIdx] = val; },
+
+		addColumn: function() {
+			this.data.columns.push("New Col");
+			this.data.content.forEach(row => { if(row.type === 'row') row.answers.push(""); });
+			this.renderRows();
+		},
+
+		removeColumn: async function() {
+			if (this.data.columns.length <= 1) return;
+			if (await SysModal.confirm("Delete the last column?")) {
+				this.data.columns.pop();
+				this.data.content.forEach(row => { if(row.type === 'row') row.answers.pop(); });
+				this.renderRows();
+			}
+		},
+
+		moveColumn: function(idx, dir) {
+			if (idx + dir < 0 || idx + dir >= this.data.columns.length) return;
+			// Swap column labels
+			const tempCol = this.data.columns[idx];
+			this.data.columns[idx] = this.data.columns[idx + dir];
+			this.data.columns[idx + dir] = tempCol;
+			// Swap answers in all rows
+			this.data.content.forEach(row => {
+				if (row.type === 'row') {
+					const tempAns = row.answers[idx];
+					row.answers[idx] = row.answers[idx + dir];
+					row.answers[idx + dir] = tempAns;
+				}
+			});
+			this.renderRows();
+		},
+
+		addRow: function() {
+			this.data.content.push({ type: 'row', label: '', answers: new Array(this.data.columns.length).fill("") });
+			this.renderRows();
+		},
+
+		addSection: function() {
+			this.data.content.push({ type: 'section', label: '' });
+			this.renderRows();
+		},
+
+		removeItem: function(idx) {
+			this.data.content.splice(idx, 1);
+			this.renderRows();
+		},
+
+		moveItem: function(idx, dir) {
+			if (idx + dir < 0 || idx + dir >= this.data.content.length) return;
+			const temp = this.data.content[idx];
+			this.data.content[idx] = this.data.content[idx + dir];
+			this.data.content[idx + dir] = temp;
+			this.renderRows();
+		},
+		
+		exportCurrent: async function() {
+			const title = document.getElementById('edit-title').value.trim() || "Untitled_Tabula";
+			const draftId = generateId();
+			
+			const exportData = {
+				data: { 
+					[draftId]: { 
+						...this.data, 
+						title: title,
+						stats: { completed: 0, bestTime: null }
+					} 
+				},
+				folders: {},
+				explicitFolders: [],
+				sortOrder: [draftId]
+			};
+
+			const jsonString = JSON.stringify(exportData, null, 2);
+			const fileName = title.toLowerCase().replace(/\s+/g, '_') + "_draft.json";
+
+			// --- SMART EXPORT LOGIC ---
+			if (window.pywebview && window.pywebview.api) {
+				// DESKTOP VERSION: Use the Python Save Dialog
+				const result = await pywebview.api.export_individual_item(fileName, jsonString);
+				if (result === "SUCCESS") {
+					showToast("Tabula exported to disk!");
+				}
+			} else {
+				// WEB VERSION: Use the "Fake Link" Download method
+				const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+				const downloadAnchorNode = document.createElement('a');
+				downloadAnchorNode.setAttribute("href", dataStr);
+				downloadAnchorNode.setAttribute("download", fileName);
+				document.body.appendChild(downloadAnchorNode);
+				downloadAnchorNode.click();
+				downloadAnchorNode.remove();
+				showToast("Tabula downloaded!");
+			}
+		},
+
+		save: function() {
+			const title = document.getElementById('edit-title').value.trim();
+			if (!title) { SysModal.alert("Please enter a title."); return; }
+			this.data.title = title;
+			
+			if (this.currentId === null) {
+				const id = generateId();
+				app.data[id] = { ...this.data, stats: { completed: 0, bestTime: null } };
+				app.folders[id] = app.currentFolder;
+			} else {
+				app.data[this.currentId] = { ...this.data, stats: app.data[this.currentId].stats };
+			}
+			
+			window.isEditing = false; // Turn off the guard!
+			
+			app.save();
+			// app.showLibrary();
+		},
+		
+		saveAsCopy: async function() {
+			const oldTitle = document.getElementById('edit-title').value.trim();
+			let newTitle = await SysModal.prompt("Save as new tabula:", oldTitle + " (Copy)");
+			
+			if (!newTitle) return;
+			newTitle = newTitle.trim();
+
+			// --- The "Duplicate Name" Check ---
+			// We look through all existing tables to see if one already has this title
+			const existingId = Object.keys(app.data).find(id => 
+				app.data[id].title.toLowerCase() === newTitle.toLowerCase()
+			);
+
+			if (existingId) {
+				const overwrite = await SysModal.confirm(`A tabula named "${newTitle}" already exists. Overwrite it?`);
+				if (!overwrite) return;
+				
+				// If overwriting, we use the existing ID instead of a new one
+				this.currentId = existingId;
+			} else {
+				// If it's truly new, we ensure the ID is null so the save logic creates a new entry
+				this.currentId = null;
+			}
+
+			// Prepare the data
+			const copyData = JSON.parse(JSON.stringify(this.data));
+			copyData.title = newTitle;
+			this.data.title = newTitle; // Update current editor view
+
+			// Reuse your existing save logic! 
+			// It will handle ID generation if currentId is null, or overwrite if it's set.
+			this.save(); 
+
+			SysModal.alert(existingId ? "Tabula overwritten!" : "Copy created successfully!");
+			app.showLibrary();
+		}
+		
+	};
+
+    const drill = {
+        activeDrill: null,
+        currentId: null,
+        timerVal: 0,
+        timerInt: null,
+		timerStarted: false,
+        totalInputs: 0,
+        correctInputs: 0,
+
+		// Add this inside the drill object
+		jumpToNext: function(el) {
+			if (!app.settings.autoTab) return;
+
+			// Find all potential inputs in the table
+			const inputs = Array.from(document.querySelectorAll('.drill-input'));
+			const currentIndex = inputs.indexOf(el);
+
+			// Look for the next input that isn't already locked/finished
+			if (currentIndex !== -1) {
+				for (let i = currentIndex + 1; i < inputs.length; i++) {
+					if (!inputs[i].readOnly && !inputs[i].disabled) {
+						inputs[i].focus();
+						break; // Stop once we find the next valid cell
+					}
+				}
+			}
+		},
+
+        load: function(drillData, id) {
+            this.activeDrill = drillData;
+            this.currentId = id;
+			this.timeStarted = false;
+            if(!this.activeDrill.columns) this.activeDrill.columns = ['1sg', '2sg', '3sg', '1pl', '2pl', '3pl'];
+            document.getElementById('drill-title-display').innerText = drillData.title;
+            this.renderTable();
+            /* this.startTimer(); */
+        },
+
+        renderTable: function() {
+            const container = document.getElementById('drill-table-container');
+            let html = '<table>';
+            html += `<tr><th id="current-section-display" style="color: var(--primary); font-family: 'Cinzel', serif; font-size: 0.8rem; background: #eadecd; border-bottom: 2px solid var(--primary); min-width: 100px; white-space: nowrap;"></th>`;
+            this.activeDrill.columns.forEach(col => { html += `<th>${col}</th>`; });
+            html += `</tr>`;
+            
+            this.totalInputs = 0;
+            this.correctInputs = 0;
+            this.updateProgress();
+
+			let currentSectionName = ""; // Track the latest section found
+
+			this.activeDrill.content.forEach((item, index) => {
+				if (item.type === 'section') {
+					currentSectionName = item.text || item.label || "General";
+					
+					// Render the row as a "Anchor" (maybe make it very thin or hidden)
+					html += `<tr class="section-row" data-index="${index}">
+								<td colspan="${this.activeDrill.columns.length + 1}">
+									${currentSectionName}
+								</td>
+							 </tr>`;
+				} else {
+					html += `<tr><td class="label-cell">${item.label || ''}</td>`;
+					
+					// Ensure item.answers exists before looping
+					const answers = item.answers || [];
+					
+					for (let i = 0; i < this.activeDrill.columns.length; i++) {
+						const cleanAns = (answers[i] || "").trim();
+						if (!cleanAns || cleanAns === '-') {
+							html += `<td class="blank-cell">—</td>`;
+						} else {
+							this.totalInputs++;
+							html += `<td><input type="text" class="drill-input" data-ans="${cleanAns}" oninput="drill.check(this)" spellcheck="false" autocomplete="off"></td>`;
+						}
+					}
+					html += `</tr>`;
+				}
+			});
+			// After the loop finishes building the string, 
+			// but BEFORE you set container.innerHTML:
+			setTimeout(() => {
+				const corner = document.getElementById('current-section-display');
+				if (corner) corner.innerText = currentSectionName; 
+			}, 0);
+            html += '</table>';
+            container.innerHTML = html;
+        },
+
+        check: function(el) {
+			// START THE TIMER ON FIRST KEYSTROKE
+			if (!this.timerStarted) {
+				/* console.log("Timer Triggered!"); */
+				this.startTimer();
+				this.timerStarted = true;
+			}
+            let expected = el.getAttribute('data-ans').trim();
+            let actual = el.value.trim();
+
+            if (!app.settings.strictAccents) {
+                expected = expected.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                actual = actual.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            } else {
+                expected = expected.toLowerCase();
+                actual = actual.toLowerCase();
+            }
+
+            const wasCorrect = el.classList.contains('correct');
+            
+            if (actual === expected && !wasCorrect) {
+                el.classList.add('correct'); 
+                if (app.settings.lockCorrect) {
+                    el.readOnly = true;
+					this.jumpToNext(el)
+                }
+                this.correctInputs++; 
+                this.updateProgress();
+            } else if (actual !== expected && wasCorrect) {
+                el.classList.remove('correct'); 
+                this.correctInputs--; 
+                this.updateProgress();
+            }
+
+            if (this.correctInputs === this.totalInputs && this.totalInputs > 0) this.win();
+        },
+
+        updateProgress: function() {
+            const pct = this.totalInputs === 0 ? 0 : Math.round((this.correctInputs / this.totalInputs) * 100);
+            document.getElementById('progress-bar').innerText = `Progress: ${pct}%`;
+        },
+
+        startTimer: function() {
+            clearInterval(this.timerInt);
+            const display = document.getElementById('timer-display');
+            display.classList.remove('danger');
+            
+            if (app.settings.timerMode === 'down') {
+                this.timerVal = app.settings.timerStart;
+            } else {
+                this.timerVal = 0;
+            }
+            
+            display.innerText = app.formatTime(this.timerVal);
+            
+            this.timerInt = setInterval(async () => {
+                if (app.settings.timerMode === 'down') {
+                    this.timerVal--;
+                    if (this.timerVal <= 10 && this.timerVal > 0) {
+                        display.classList.add('danger');
+                    }
+                    if (this.timerVal <= 0) {
+                        this.stop();
+                        display.innerText = "00:00";
+                        await SysModal.alert("Tempus Fugit! Time is up.");
+                        app.showLibrary();
+                        return;
+                    }
+                } else {
+                    this.timerVal++;
+                }
+                display.innerText = app.formatTime(this.timerVal);
+            }, 1000);
+        },
+
+        stop: function() { clearInterval(this.timerInt); },
+
+        win: function() {
+            this.stop();
+            const d = app.data[this.currentId];
+            d.stats.completed++;
+            
+            let timeTaken = 0;
+            if (app.settings.timerMode === 'down') {
+                timeTaken = app.settings.timerStart - this.timerVal;
+            } else {
+                timeTaken = this.timerVal;
+            }
+
+            if (d.stats.bestTime === null || timeTaken < d.stats.bestTime) { 
+                d.stats.bestTime = timeTaken; 
+            }
+            
+            app.save();
+            
+            if (app.settings.sfx) {
+                const audio = document.getElementById('snd-win');
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("Audio play blocked by browser."));
+            }
+
+            document.getElementById('win-time').innerText = app.formatTime(timeTaken);
+            document.getElementById('win-modal').style.display = 'flex';
+        }
+    };
+	document.fonts.ready.then(function () {
+		document.body.classList.remove('fonts-loading');
+	});	
+
+    app.init();
+	
+	window.addEventListener('pywebviewready', async () => {
+        const indicator = document.getElementById('sync-indicator');
+        indicator.innerText = "🔄 Reading...";
+        try {
+            const dataRaw = await window.pywebview.api.load_tabula_from_disk();
+            if (dataRaw && dataRaw !== "{}") {
+                const parsed = JSON.parse(dataRaw);
+                if (parsed.tabula_data) {
+                    app.data = parsed.tabula_data;
+                    app.folders = parsed.folders || {};
+                    app.explicitFolders = parsed.explicitFolders || [];
+                    app.sortOrder = parsed.sortOrder || [];
+                    app.settings = { ...defaultSettings, ...(parsed.settings || {}) };
+                    
+                    app.save(); // Pushes data directly into the browser memory
+                }
+            }
+            indicator.innerText = "✅ Desktop Active";
+        } catch(e) {
+            console.error("Tabula Load Error:", e);
+            indicator.innerText = "❌ Load Error";
+        }
+        setTimeout(() => { app.showLibrary(); }, 50);
+    });
+
+	// --- TABULA MASTER BACKUP HANDSHAKE ---
+	window.triggerAutoBackups = function() {
+		if (window.pywebview && window.pywebview.api) {
+			try {
+				const payload = JSON.stringify({ 
+					tabula_data: app.data,
+                    folders: app.folders,
+                    explicitFolders: app.explicitFolders,
+                    sortOrder: app.sortOrder,
+                    settings: app.settings,
+					timestamp: new Date().toISOString() 
+				});
+				window.pywebview.api.save_to_disk(payload);
+			} catch (e) {
+				console.error("Tabula backup failed:", e);
+			}
+		}
+	};
+
+</script>
+<div id="toast-msg"></div>
+<div id="sys-modal-overlay" style="position: fixed; inset: 0; background: rgba(20, 10, 5, 0.75); display: none; align-items: center; justify-content: center; z-index: 3000;">
+    <div class="modal" style="max-width: 600px; width: 90%; background: var(--card); padding: 25px; border-radius: 4px; border: 2px solid var(--primary); box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
+        
+        <h3 id="sys-modal-title" style="font-family:'Cinzel', serif; font-size:1.17rem; color:var(--text); margin: 0 0 10px 0;">Ars Memoria</h3>
+        <p id="sys-modal-msg" style="font-size:1rem; color:var(--secondary); margin: 0 0 20px 0;"></p>
+        
+        <input type="text" id="sys-modal-input" style="width: 96%; padding: 10px; margin-bottom: 20px; border: 1px solid #a39276; display: none;">
+        
+        <div style="display:flex; gap:10px;">
+			<button id="sys-btn-ok" class="btn-main" style="flex:1; background:#eadecd; color:var(--text); border-color:#a39276;">Confirm</button>
+			<button id="sys-btn-cancel" class="btn-main" style="flex:1;">Cancel</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
